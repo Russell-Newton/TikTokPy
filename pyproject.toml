@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiktokapipy"
+version = "0.0.1"
+authors = [
+    { name="Russell Newton", email="russell.newton01@gmail.com" },
+]
+description = "Asyncio TikTok data scraping tool"
+readme = "README.md"
+requires-python = ">=3.8"
+
+keywords = ["tiktok", "python3", "scraper", "unofficial", "tiktok-scraper", "tiktok scraper"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Games/Entertainment",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+dependencies = [
+    "playwright",
+    "pydantic"
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Russell-Newton/TikTokPy"
