@@ -53,7 +53,7 @@ class CamelCaseModel(TikTokDataModel):
         json_loads = _load_with_id_alias
 
 
-class TitleCaseModel(BaseModel):
+class TitleCaseModel(TikTokDataModel):
     class Config:
         alias_generator = _to_title
         allow_population_by_field_name = True

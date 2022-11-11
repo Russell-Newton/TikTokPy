@@ -1,9 +1,10 @@
-import asyncio
 import json
+import time
 from typing import List, Tuple, Type, TypeVar
 
 import requests
-from playwright.async_api import Page, Request, Route, async_playwright
+from playwright.sync_api import Page, Request, Route, sync_playwright
+from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import TikTokDataModel
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import (
@@ -18,8 +19,8 @@ from tiktokapipy.models.video import LightVideo, Video, video_link
 T = TypeVar("T", bound=TikTokDataModel)
 
 
-async def _scroll_page_down(page: Page, scroll_down_time: float):
-    await page.evaluate(
+def _scroll_page_down(page: Page, scroll_down_time: float):
+    page.evaluate(
         """
         var intervalID = setInterval(function () {
             var scrollingElement = (document.scrollingElement || document.body);
@@ -45,13 +46,9 @@ async def _scroll_page_down(page: Page, scroll_down_time: float):
     #     its += 1
     #     if its >= time:
     #         done = True
-    await asyncio.sleep(scroll_down_time)
+    time.sleep(scroll_down_time)
 
-    await page.evaluate("clearInterval(intervalID)")
-
-
-class TikTokAPIError(RuntimeError):
-    pass
+    page.evaluate("clearInterval(intervalID)")
 
 
 class LightVideosIter:
@@ -59,30 +56,32 @@ class LightVideosIter:
         self._videos = videos
         self._api = api
 
-    async def fetch_video(self) -> Video:
-        video = await self._api.video(video_link(self._videos[self.next_up].id))
+    def fetch_video(self) -> Video:
+        video = self._api.video(video_link(self._videos[self.next_up].id))
         self.next_up += 1
         return video
 
-    async def __aiter__(self) -> "LightVideosIter":
+    def __iter__(self) -> "LightVideosIter":
         self.next_up = 0
         return self
 
-    async def __anext__(self) -> Video:
+    def __next__(self) -> Video:
         if self.next_up == len(self._videos):
-            raise StopAsyncIteration
-        return await self.fetch_video()
+            raise StopIteration
+        return self.fetch_video()
 
 
 class TikTokAPI:
     def __init__(
         self,
+        page_load_time: float = 2,
         scroll_down_time: float = 0,
         headless: bool = None,
         data_dump_file: str = None,
     ):
         if scroll_down_time > 0 and headless:
             raise ValueError("Cannot scroll down with a headless browser")
+        self.page_load_time = page_load_time
         self.scroll_down_time = scroll_down_time
         if headless is None:
             self.headless = scroll_down_time == 0
@@ -98,51 +97,51 @@ class TikTokAPI:
     def browser(self, val):
         raise TikTokAPIError("Cannot change browser instance")
 
-    async def __aenter__(self):
-        self._playwright = await async_playwright().start()
-        self._browser = await self._playwright.chromium.launch(headless=self.headless)
-        self._context = await self._browser.new_context()
+    def __enter__(self):
+        self._playwright = sync_playwright().start()
+        self._browser = self._playwright.chromium.launch(headless=self.headless)
+        self._context = self._browser.new_context()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self._browser.close()
-        await self._playwright.stop()
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._browser.close()
+        self._playwright.stop()
 
-    async def _scrape_data(
+    def _scrape_data(
         self, link: str, data_model: Type[T]
     ) -> Tuple[T, List[APIResponse]]:
         api_extras = []
         extras_json = []
 
-        async def capture_api_extras(route: Route, request: Request):
+        def capture_api_extras(route: Route, request: Request):
             r = requests.get(
                 request.url,
                 headers=request.headers,
                 cookies={
                     cookie["name"]: cookie["value"]
-                    for cookie in await self._context.cookies()
+                    for cookie in self._context.cookies()
                 },
             )
             if len(r.content) > 2:
                 extras_json.append(json.loads(r.content.decode("utf-8")))
                 api_response = APIResponse.parse_raw(r.content)
                 api_extras.append(api_response)
-            await route.continue_()
+            route.continue_()
 
-        page = await self._context.new_page()
+        page = self._context.new_page()
+        page.route("**/api/challenge/item_list/*", capture_api_extras)
+        page.route("**/api/comment/list/*", capture_api_extras)
+        page.route("**/api/post/item_list/*", capture_api_extras)
+
+        page.goto(link)
+
         if self.scroll_down_time > 0:
-            await page.route("**/api/challenge/item_list/*", capture_api_extras)
-            await page.route("**/api/comment/list/*", capture_api_extras)
-            await page.route("**/api/post/item_list/*", capture_api_extras)
+            _scroll_page_down(page, self.scroll_down_time)
 
-        await page.goto(link)
+        content = page.content()
+        time.sleep(self.page_load_time)
 
-        if self.scroll_down_time > 0:
-            await _scroll_page_down(page, self.scroll_down_time)
-
-        content = await page.content()
-
-        await page.close()
+        page.close()
 
         data = content.split('<script id="SIGI_STATE" type="application/json">')[
             1
@@ -158,9 +157,9 @@ class TikTokAPI:
 
         return response, api_extras
 
-    async def challenge(self, challenge_name: str) -> Challenge:
+    def challenge(self, challenge_name: str) -> Challenge:
         link = challenge_link(challenge_name)
-        response, api_extras = await self._scrape_data(link, ChallengeResponse)
+        response, api_extras = self._scrape_data(link, ChallengeResponse)
         challenge = response.challenge_page.challenge_info.challenge
         stats = response.challenge_page.challenge_info.stats
         challenge.stats = stats
@@ -177,9 +176,9 @@ class TikTokAPI:
 
         return challenge
 
-    async def user(self, username: str) -> User:
+    def user(self, username: str) -> User:
         link = user_link(username)
-        response, api_extras = await self._scrape_data(link, UserResponse)
+        response, api_extras = self._scrape_data(link, UserResponse)
         name, user = list(response.user_module.users.items())[0]
         user.stats = response.user_module.stats[name]
 
@@ -195,8 +194,8 @@ class TikTokAPI:
 
         return user
 
-    async def video(self, link: str) -> Video:
-        response, api_extras = await self._scrape_data(link, VideoResponse)
+    def video(self, link: str) -> Video:
+        response, api_extras = self._scrape_data(link, VideoResponse)
         video = list(response.item_module.values())[0]
 
         comments = list(response.comment_item.values()) if response.comment_item else []

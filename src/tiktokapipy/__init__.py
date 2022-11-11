@@ -1,0 +1,2 @@
+class TikTokAPIError(RuntimeError):
+    pass
