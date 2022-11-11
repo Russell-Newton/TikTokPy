@@ -1,6 +1,6 @@
 import json
 import time
-from typing import List, Tuple, Type, TypeVar
+from typing import List, Literal, Tuple, Type, TypeVar
 
 import requests
 from playwright.sync_api import Page, Request, Route, sync_playwright
@@ -74,14 +74,16 @@ class LightVideosIter:
 class TikTokAPI:
     def __init__(
         self,
-        page_load_time: float = 2,
+        wait_until: Literal[
+            "domcontentloaded", "load", "networkidle", "commit"
+        ] = "networkidle",
         scroll_down_time: float = 0,
         headless: bool = None,
         data_dump_file: str = None,
     ):
         if scroll_down_time > 0 and headless:
             raise ValueError("Cannot scroll down with a headless browser")
-        self.page_load_time = page_load_time
+        self.wait_until = wait_until
         self.scroll_down_time = scroll_down_time
         if headless is None:
             self.headless = scroll_down_time == 0
@@ -133,13 +135,12 @@ class TikTokAPI:
         page.route("**/api/comment/list/*", capture_api_extras)
         page.route("**/api/post/item_list/*", capture_api_extras)
 
-        page.goto(link)
+        page.goto(link, wait_until=self.wait_until)
 
         if self.scroll_down_time > 0:
             _scroll_page_down(page, self.scroll_down_time)
 
         content = page.content()
-        time.sleep(self.page_load_time)
 
         page.close()
 
@@ -157,7 +158,7 @@ class TikTokAPI:
 
         return response, api_extras
 
-    def challenge(self, challenge_name: str) -> Challenge:
+    def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
         link = challenge_link(challenge_name)
         response, api_extras = self._scrape_data(link, ChallengeResponse)
         challenge = response.challenge_page.challenge_info.challenge
@@ -172,11 +173,13 @@ class TikTokAPI:
                     extra.item_list for extra in api_extras if extra.item_list
                 ]
             ]
+        if video_limit > 0:
+            videos = videos[:video_limit]
         challenge.videos = LightVideosIter(videos, self)
 
         return challenge
 
-    def user(self, username: str) -> User:
+    def user(self, username: str, video_limit: int = 25) -> User:
         link = user_link(username)
         response, api_extras = self._scrape_data(link, UserResponse)
         name, user = list(response.user_module.users.items())[0]
@@ -190,6 +193,8 @@ class TikTokAPI:
                     extra.item_list for extra in api_extras if extra.item_list
                 ]
             ]
+        if video_limit > 0:
+            videos = videos[:video_limit]
         user.videos = LightVideosIter(videos, self)
 
         return user

@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import List, Tuple, Type, TypeVar
+from typing import List, Literal, Tuple, Type, TypeVar
 
 import requests
 from playwright.async_api import Page, Request, Route, async_playwright
@@ -61,7 +61,7 @@ class LightVideosIter:
         self.next_up += 1
         return video
 
-    async def __aiter__(self) -> "LightVideosIter":
+    def __aiter__(self) -> "LightVideosIter":
         self.next_up = 0
         return self
 
@@ -74,14 +74,16 @@ class LightVideosIter:
 class TikTokAPI:
     def __init__(
         self,
-        page_load_time: float = 2,
+        wait_until: Literal[
+            "domcontentloaded", "load", "networkidle", "commit"
+        ] = "networkidle",
         scroll_down_time: float = 0,
         headless: bool = None,
         data_dump_file: str = None,
     ):
         if scroll_down_time > 0 and headless:
             raise ValueError("Cannot scroll down with a headless browser")
-        self.page_load_time = page_load_time
+        self.wait_until = wait_until
         self.scroll_down_time = scroll_down_time
         if headless is None:
             self.headless = scroll_down_time == 0
@@ -133,8 +135,7 @@ class TikTokAPI:
         await page.route("**/api/comment/list/*", capture_api_extras)
         await page.route("**/api/post/item_list/*", capture_api_extras)
 
-        await page.goto(link)
-        await asyncio.sleep(self.page_load_time)
+        await page.goto(link, wait_until=self.wait_until)
 
         if self.scroll_down_time > 0:
             await _scroll_page_down(page, self.scroll_down_time)
@@ -157,7 +158,7 @@ class TikTokAPI:
 
         return response, api_extras
 
-    async def challenge(self, challenge_name: str) -> Challenge:
+    async def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
         link = challenge_link(challenge_name)
         response, api_extras = await self._scrape_data(link, ChallengeResponse)
         challenge = response.challenge_page.challenge_info.challenge
@@ -172,11 +173,13 @@ class TikTokAPI:
                     extra.item_list for extra in api_extras if extra.item_list
                 ]
             ]
+        if video_limit > 0:
+            videos = videos[:video_limit]
         challenge.videos = LightVideosIter(videos, self)
 
         return challenge
 
-    async def user(self, username: str) -> User:
+    async def user(self, username: str, video_limit: int = 25) -> User:
         link = user_link(username)
         response, api_extras = await self._scrape_data(link, UserResponse)
         name, user = list(response.user_module.users.items())[0]
@@ -190,6 +193,8 @@ class TikTokAPI:
                     extra.item_list for extra in api_extras if extra.item_list
                 ]
             ]
+        if video_limit > 0:
+            videos = videos[:video_limit]
         user.videos = LightVideosIter(videos, self)
 
         return user
