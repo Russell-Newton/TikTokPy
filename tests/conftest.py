@@ -18,3 +18,13 @@ def sync_api():
 @pytest.fixture(scope="session")
 def video_id():
     return 7109512307918621995
+
+
+@pytest.fixture(scope="session")
+def user_name():
+    return "tiktok"
+
+
+@pytest.fixture(scope="session")
+def challenge_name():
+    return "fyp"
