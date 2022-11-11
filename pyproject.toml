@@ -12,7 +12,7 @@ description = "Asyncio TikTok data scraping tool"
 readme = "README.md"
 requires-python = ">=3.8"
 
-keywords = ["tiktok", "python3", "scraper", "unofficial", "tiktok-scraper", "tiktok scraper"]
+keywords = ["tiktok", "python3", "scraper", "unofficial", "tiktok-scraper", "tiktok scraper", "asyncio", "playwright"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Framework :: AsyncIO",
@@ -32,13 +32,16 @@ classifiers = [
 
 dependencies = [
     "playwright",
-    "pydantic"
+    "pydantic",
+    "requests"
 ]
 
 [project.optional-dependencies]
 test = [
     "pytest",
-    "pytest-cov"
+    "pytest-cov",
+    "pytest-asyncio",
+    "tox"
 ]
 
 [project.urls]
