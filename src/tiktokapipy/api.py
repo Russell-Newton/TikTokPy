@@ -142,6 +142,8 @@ class TikTokAPI:
 
         content = await page.content()
 
+        await page.close()
+
         data = content.split('<script id="SIGI_STATE" type="application/json">')[
             1
         ].split("</script>")[0]
