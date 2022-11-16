@@ -1,6 +1,6 @@
 import pytest
-from tiktokapipy.async_api import TikTokAPI as AsyncTikTokAPI
-from tiktokapipy.sync_api import TikTokAPI as SyncTikTokAPI
+from tiktokapipy.api import TikTokAPI as SyncTikTokAPI
+from tiktokapipy.async_api import AsyncTikTokAPI as AsyncTikTokAPI
 
 
 @pytest.fixture(scope="function")
