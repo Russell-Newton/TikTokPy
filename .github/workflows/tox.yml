@@ -1,0 +1,20 @@
+name: "Unit Tests"
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  run-tox:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.8", "3.10"]
+    steps:
+      - name: Test Py ${{ matrix.python-version }}
+        uses: collective/tox-action@main
+        with:
+          python-version: ${{ matrix.python-version }}
