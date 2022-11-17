@@ -4,18 +4,22 @@ from typing import List, Literal, Tuple, Type, TypeVar, Union
 
 import requests
 from playwright.sync_api import Page, Request, Route, sync_playwright
-from tiktokapipy.models import TikTokDataModel
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import (
     APIResponse,
     ChallengeResponse,
+    MobileChallengeResponse,
+    MobileResponseMixin,
+    MobileUserResponse,
+    MobileVideoResponse,
+    PrimaryResponseType,
     UserResponse,
     VideoResponse,
 )
 from tiktokapipy.models.user import LightUser, User, user_link
 from tiktokapipy.models.video import LightVideo, Video, video_link
 
-DataModelT = TypeVar("DataModelT", bound=TikTokDataModel)
+DataModelT = TypeVar("DataModelT", bound=PrimaryResponseType)
 
 
 class TikTokAPIError(Exception):
@@ -118,18 +122,36 @@ class TikTokAPI:
     def _light_user_getter_type(self):
         return LightUserGetter
 
+    @property
+    def _challenge_response_type(self):
+        if self.emulate_mobile:
+            return MobileChallengeResponse
+        return ChallengeResponse
+
+    @property
+    def _user_response_type(self):
+        if self.emulate_mobile:
+            return MobileUserResponse
+        return UserResponse
+
+    @property
+    def _video_response_type(self):
+        if self.emulate_mobile:
+            return MobileVideoResponse
+        return VideoResponse
+
     def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
         link = challenge_link(challenge_name)
-        response, api_extras = self._scrape_data(link, ChallengeResponse)
+        response, api_extras = self._scrape_data(link, self._challenge_response_type)
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
     def user(self, user: Union[int, str], video_limit: int = 25) -> User:
         link = user_link(user)
-        response, api_extras = self._scrape_data(link, UserResponse)
+        response, api_extras = self._scrape_data(link, self._user_response_type)
         return self._extract_user_from_response(response, api_extras, video_limit)
 
     def video(self, link: str) -> Video:
-        response, api_extras = self._scrape_data(link, VideoResponse)
+        response, api_extras = self._scrape_data(link, self._video_response_type)
         return self._extract_video_from_response(response, api_extras)
 
     def _scrape_data(
@@ -185,14 +207,21 @@ class TikTokAPI:
                 j["extras"] = extras_json
                 json.dump(j, f, indent=2)
 
-        return data_model.parse_raw(data)
+        parsed = data_model.parse_raw(data)
+        if isinstance(parsed, MobileResponseMixin):
+            parsed = parsed.to_desktop()
+        return parsed
 
     def _extract_challenge_from_response(
         self,
-        response: ChallengeResponse,
+        response: Union[ChallengeResponse, MobileChallengeResponse],
         api_extras: List[APIResponse],
         video_limit: int = 25,
     ):
+        if response.challenge_page.status_code:
+            raise TikTokAPIError(
+                f"Error in challenge extraction: status code {response.challenge_page.status_code}"
+            )
         challenge = response.challenge_page.challenge_info.challenge
         stats = response.challenge_page.challenge_info.stats
         challenge.stats = stats
@@ -202,10 +231,14 @@ class TikTokAPI:
 
     def _extract_user_from_response(
         self,
-        response: UserResponse,
+        response: Union[UserResponse, MobileUserResponse],
         api_extras: List[APIResponse],
         video_limit: int = 25,
     ):
+        if response.user_page.status_code:
+            raise TikTokAPIError(
+                f"Error in user extraction: status code {response.user_page.status_code}"
+            )
         name, user = list(response.user_module.users.items())[0]
         user.stats = response.user_module.stats[name]
         user.videos = self._create_videos_iter(response, api_extras, video_limit)
@@ -228,8 +261,14 @@ class TikTokAPI:
         return self._light_videos_iter_type(videos, self)
 
     def _extract_video_from_response(
-        self, response: VideoResponse, api_extras: List[APIResponse]
+        self,
+        response: Union[VideoResponse, MobileVideoResponse],
+        api_extras: List[APIResponse],
     ):
+        if response.video_page.status_code:
+            raise TikTokAPIError(
+                f"Error in video extraction: status code {response.video_page.status_code}"
+            )
         video = list(response.item_module.values())[0]
 
         comments = list(response.comment_item.values()) if response.comment_item else []

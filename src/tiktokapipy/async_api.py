@@ -12,12 +12,7 @@ from tiktokapipy.api import (
     TikTokAPIError,
 )
 from tiktokapipy.models.challenge import Challenge, challenge_link
-from tiktokapipy.models.raw_data import (
-    APIResponse,
-    ChallengeResponse,
-    UserResponse,
-    VideoResponse,
-)
+from tiktokapipy.models.raw_data import APIResponse
 from tiktokapipy.models.user import User, user_link
 from tiktokapipy.models.video import Video, video_link
 
@@ -111,16 +106,18 @@ class AsyncTikTokAPI(TikTokAPI):
 
     async def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
         link = challenge_link(challenge_name)
-        response, api_extras = await self._scrape_data(link, ChallengeResponse)
+        response, api_extras = await self._scrape_data(
+            link, self._challenge_response_type
+        )
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
     async def user(self, user: str, video_limit: int = 25) -> User:
         link = user_link(user)
-        response, api_extras = await self._scrape_data(link, UserResponse)
+        response, api_extras = await self._scrape_data(link, self._user_response_type)
         return self._extract_user_from_response(response, api_extras, video_limit)
 
     async def video(self, link: str) -> Video:
-        response, api_extras = await self._scrape_data(link, VideoResponse)
+        response, api_extras = await self._scrape_data(link, self._video_response_type)
         return self._extract_video_from_response(response, api_extras)
 
     async def _scroll_page_down(self, page: Page, scroll_down_time: float):

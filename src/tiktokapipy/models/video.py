@@ -28,8 +28,8 @@ class VideoData(CamelCaseModel):
     width: int
     duration: int
     ratio: str
-    format: str
-    bitrate: int
+    format: Optional[str]
+    bitrate: Optional[int]
     # encoded_type: str
     # video_quality: str
     # encode_user_tag: str
@@ -69,6 +69,23 @@ class MusicData(CamelCaseModel):
     # schedule_search_time: int
 
 
+class ImageUrlList(CamelCaseModel):
+    url_list: List[str]
+
+
+class ImageData(CamelCaseModel):
+    image_u_r_l: ImageUrlList
+    image_width: int
+    image_height: int
+
+
+class ImagePost(CamelCaseModel):
+    images: List[ImageData]
+    cover: ImageData
+    share_cover: ImageData
+    title: str
+
+
 class LightVideo(CamelCaseModel):
     id: int
 
@@ -86,6 +103,7 @@ class Video(LightVideo):
     # digged: bool                               # liked by you
     # item_comment_status: int
     location_created: Optional[str]
+    image_post: Optional[ImagePost]
 
     ######################
     # Author information #
