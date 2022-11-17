@@ -1,5 +1,6 @@
 import json
 import time
+import warnings
 from typing import List, Literal, Tuple, Type, TypeVar, Union
 
 import requests
@@ -289,6 +290,10 @@ class TikTokAPI:
                 comment.creator = self._light_user_getter_type(comment.user, self)
 
         video.comments = comments
+        if not video.comments:
+            warnings.warn(
+                "Was unable to collect comments.\nA second attempt might work."
+            )
         if isinstance(video.author, User):
             video.creator = self._light_user_getter_type(video.author.unique_id, self)
         else:
