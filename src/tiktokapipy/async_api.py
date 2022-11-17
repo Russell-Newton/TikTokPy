@@ -51,6 +51,7 @@ class AsyncTikTokAPI(TikTokAPI):
         if self.emulate_mobile:
             context_kwargs.update(self.playwright.devices["iPhone 12"])
         self._context = await self.browser.new_context(**context_kwargs)
+        self.context.set_default_navigation_timeout(self.navigation_timeout)
 
         return self
 
@@ -88,7 +89,7 @@ class AsyncTikTokAPI(TikTokAPI):
                 api_extras.append(api_response)
             await route.continue_()
 
-        page = await self._context.new_page()
+        page: Page = await self._context.new_page()
         await page.route("**/api/challenge/item_list/*", capture_api_extras)
         await page.route("**/api/comment/list/*", capture_api_extras)
         await page.route("**/api/post/item_list/*", capture_api_extras)

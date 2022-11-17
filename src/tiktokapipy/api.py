@@ -66,6 +66,7 @@ class TikTokAPI:
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
+        navigation_timeout: float = 30000,
         **context_kwargs,
     ):
         if scroll_down_time > 0 and headless:
@@ -79,6 +80,7 @@ class TikTokAPI:
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs
+        self.navigation_timeout = navigation_timeout
 
     def __enter__(self):
         self._playwright = sync_playwright().start()
@@ -89,6 +91,7 @@ class TikTokAPI:
         if self.emulate_mobile:
             context_kwargs.update(self.playwright.devices["iPhone 12"])
         self._context = self.browser.new_context(**context_kwargs)
+        self.context.set_default_navigation_timeout(self.navigation_timeout)
 
         return self
 
