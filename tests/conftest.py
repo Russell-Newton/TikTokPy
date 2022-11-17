@@ -5,13 +5,13 @@ from tiktokapipy.async_api import AsyncTikTokAPI as AsyncTikTokAPI
 
 @pytest.fixture(scope="function")
 async def async_api():
-    async with AsyncTikTokAPI(data_dump_file="examples/test_data.json") as api:
+    async with AsyncTikTokAPI(data_dump_file="examples/test_data") as api:
         yield api
 
 
 @pytest.fixture(scope="function")
 def sync_api():
-    with SyncTikTokAPI(data_dump_file="examples/test_data.json") as api:
+    with SyncTikTokAPI(data_dump_file="examples/test_data") as api:
         yield api
 
 

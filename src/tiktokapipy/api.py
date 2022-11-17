@@ -12,7 +12,7 @@ from tiktokapipy.models.raw_data import (
     UserResponse,
     VideoResponse,
 )
-from tiktokapipy.models.user import User, user_link
+from tiktokapipy.models.user import LightUser, User, user_link
 from tiktokapipy.models.video import LightVideo, Video, video_link
 
 DataModelT = TypeVar("DataModelT", bound=TikTokDataModel)
@@ -42,6 +42,15 @@ class LightVideosIter:
         return self.fetch_video()
 
 
+class LightUserGetter:
+    def __init__(self, user: str, api: "TikTokAPI"):
+        self._user = LightUser(unique_id=user)
+        self._api = api
+
+    def __call__(self) -> User:
+        return self._api.user(self._user.unique_id)
+
+
 class TikTokAPI:
     def __init__(
         self,
@@ -52,7 +61,7 @@ class TikTokAPI:
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
-        **context_kwargs
+        **context_kwargs,
     ):
         if scroll_down_time > 0 and headless:
             raise ValueError("Cannot scroll down with a headless browser")
@@ -102,16 +111,20 @@ class TikTokAPI:
         return self._context
 
     @property
-    def light_videos_iter_type(self):
+    def _light_videos_iter_type(self):
         return LightVideosIter
+
+    @property
+    def _light_user_getter_type(self):
+        return LightUserGetter
 
     def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
         link = challenge_link(challenge_name)
         response, api_extras = self._scrape_data(link, ChallengeResponse)
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
-    def user(self, username: str, video_limit: int = 25) -> User:
-        link = user_link(username)
+    def user(self, user: Union[int, str], video_limit: int = 25) -> User:
+        link = user_link(user)
         response, api_extras = self._scrape_data(link, UserResponse)
         return self._extract_user_from_response(response, api_extras, video_limit)
 
@@ -163,7 +176,11 @@ class TikTokAPI:
         ].split("</script>")[0]
 
         if self.data_dump_file:
-            with open(self.data_dump_file, "w+") as f:
+            with open(
+                f"{self.data_dump_file}.{data_model.__name__}.json",
+                "w+",
+                encoding="utf-8",
+            ) as f:
                 j = json.loads(data)
                 j["extras"] = extras_json
                 json.dump(j, f, indent=2)
@@ -203,15 +220,12 @@ class TikTokAPI:
     ):
         videos = list(response.item_module.values())
         if api_extras:
-            videos += [
-                video
-                for video in [
-                    extra.item_list for extra in api_extras if extra.item_list
-                ]
-            ]
+            for extra in api_extras:
+                if extra.item_list:
+                    videos += extra.item_list
         if video_limit > 0:
             videos = videos[:video_limit]
-        return self.light_videos_iter_type(videos, self)
+        return self._light_videos_iter_type(videos, self)
 
     def _extract_video_from_response(
         self, response: VideoResponse, api_extras: List[APIResponse]
@@ -220,13 +234,22 @@ class TikTokAPI:
 
         comments = list(response.comment_item.values()) if response.comment_item else []
         if api_extras:
-            comments += [
-                comment
-                for comment in [
-                    extra.comments for extra in api_extras if extra.comments
-                ]
-            ]
+            for extra in api_extras:
+                if extra.comments:
+                    comments += extra.comments
+        for comment in comments:
+            if isinstance(comment.user, User):
+                comment.creator = self._light_user_getter_type(
+                    comment.user.unique_id, self
+                )
+            else:
+                comment.creator = self._light_user_getter_type(comment.user, self)
+
         video.comments = comments
+        if isinstance(video.author, User):
+            video.creator = self._light_user_getter_type(video.author.unique_id, self)
+        else:
+            video.creator = self._light_user_getter_type(video.author, self)
 
         return video
 

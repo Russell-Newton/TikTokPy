@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Awaitable, Callable, Optional, Union
 
 from tiktokapipy.models import CamelCaseModel
 
@@ -44,6 +44,8 @@ class Comment(CamelCaseModel):
     # collect_stat: int
     # trans_btn_style: int
     # label_list: Optional[list]
+
+    creator: "Optional[Callable[[], Union[User, Awaitable[User]]]]"
 
 
 from tiktokapipy.models.user import User  # noqa E402

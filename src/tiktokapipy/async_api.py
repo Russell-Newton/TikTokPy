@@ -4,7 +4,13 @@ from typing import List, Tuple, Type
 
 import requests
 from playwright.async_api import Page, Request, Route, async_playwright
-from tiktokapipy.api import DataModelT, LightVideosIter, TikTokAPI, TikTokAPIError
+from tiktokapipy.api import (
+    DataModelT,
+    LightUserGetter,
+    LightVideosIter,
+    TikTokAPI,
+    TikTokAPIError,
+)
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import (
     APIResponse,
@@ -32,6 +38,11 @@ class AsyncLightVideoIter(LightVideosIter):
         return await self.fetch_video()
 
 
+class AsyncLightUserGetter(LightUserGetter):
+    async def __call__(self) -> User:
+        return await self._api.user(self._user.unique_id)
+
+
 class AsyncTikTokAPI(TikTokAPI):
     def __enter__(self):
         raise TikTokAPIError("Must use async context manager with AsyncTikTokAPI")
@@ -54,8 +65,12 @@ class AsyncTikTokAPI(TikTokAPI):
         await self.playwright.stop()
 
     @property
-    def light_videos_iter_type(self):
+    def _light_videos_iter_type(self):
         return AsyncLightVideoIter
+
+    @property
+    def _light_user_getter_type(self):
+        return AsyncLightUserGetter
 
     async def _scrape_data(
         self, link: str, data_model: Type[DataModelT]
@@ -99,8 +114,8 @@ class AsyncTikTokAPI(TikTokAPI):
         response, api_extras = await self._scrape_data(link, ChallengeResponse)
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
-    async def user(self, username: str, video_limit: int = 25) -> User:
-        link = user_link(username)
+    async def user(self, user: str, video_limit: int = 25) -> User:
+        link = user_link(user)
         response, api_extras = await self._scrape_data(link, UserResponse)
         return self._extract_user_from_response(response, api_extras, video_limit)
 

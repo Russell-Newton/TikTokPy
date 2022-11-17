@@ -1,4 +1,4 @@
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union
 from urllib.parse import quote
 
 from tiktokapipy.models import CamelCaseModel
@@ -20,13 +20,16 @@ class UserStats(CamelCaseModel):
     # need_fix: Union[bool, None]   # not sure what this is... collected on videos, not user pages
 
 
-class User(CamelCaseModel):
+class LightUser(CamelCaseModel):
+    unique_id: str
+
+
+class User(LightUser):
     ##################
     # Identification #
     ##################
     id: int
     # short_id: Optional[str]
-    unique_id: str
     nickname: str
 
     ########################
@@ -76,6 +79,6 @@ from tiktokapipy.models.video import Video  # noqa E402
 User.update_forward_refs()
 
 
-def user_link(username: str) -> str:
+def user_link(username: Union[int, str]) -> str:
     quoted = quote(username)
     return f"https://www.tiktok.com/@{quoted}"

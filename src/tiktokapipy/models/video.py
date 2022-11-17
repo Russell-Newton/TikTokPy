@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Awaitable, Callable, List, Optional, Union
 
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 
@@ -136,6 +136,7 @@ class Video(LightVideo):
     # vl1: bool
 
     comments: "Optional[List[Comment]]"
+    creator: "Optional[Callable[[], Union[User, Awaitable[User]]]]"
 
 
 from tiktokapipy.models.challenge import Challenge  # noqa E402
