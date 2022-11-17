@@ -266,6 +266,10 @@ class TikTokAPI:
         api_extras: List[APIResponse],
     ):
         if response.video_page.status_code:
+            if response.video_page.status_code == 10239:
+                raise TikTokAPIError(
+                    "Slideshows can't be extracted without mobile emulation."
+                )
             raise TikTokAPIError(
                 f"Error in video extraction: status code {response.video_page.status_code}"
             )
