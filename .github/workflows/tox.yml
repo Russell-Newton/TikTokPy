@@ -29,8 +29,14 @@ jobs:
       uses: actions/cache@v3
       with:
         path: .tox
-        # setup.cfg and pyproject.toml have versioning info that would
-        # impact the tox environment.
+        # pyproject.toml has versioning info that would impact the tox environment.
         key: tox-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+    - name: Playwright Cache
+      id: cache-playwright
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache
+        # pyproject.toml has versioning info that would impact the tox environment.
+        key: playwright-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
     - name: Test with tox
       run: tox
