@@ -24,5 +24,13 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         python -m pip install tox tox-gh-actions
+    - name: Tox Cache
+      id: cache-tox
+      uses: actions/cache@v3
+      with:
+        path: .tox
+        # setup.cfg and pyproject.toml have versioning info that would
+        # impact the tox environment.
+        key: tox-${{ hashFiles('pyproject.toml') }}
     - name: Test with tox
       run: tox
