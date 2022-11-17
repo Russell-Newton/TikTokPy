@@ -7,7 +7,6 @@ async def test_user_async(async_api, user_name):
     assert user.videos
     async for video in user.videos:
         assert video
-        assert video.comments
 
 
 async def test_user_async_mobile(async_api_mobile, user_name):
