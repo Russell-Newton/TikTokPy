@@ -4,7 +4,7 @@ import warnings
 from typing import List, Literal, Tuple, Type, TypeVar, Union
 
 import requests
-from playwright.sync_api import Page, Request, Route, sync_playwright
+from playwright.sync_api import Page, Request, Route, TimeoutError, sync_playwright
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import (
     APIResponse,
@@ -67,6 +67,7 @@ class TikTokAPI:
         data_dump_file: str = None,
         emulate_mobile: bool = False,
         navigation_timeout: float = 30000,
+        navigation_retries: int = 0,
         **context_kwargs,
     ):
         if scroll_down_time > 0 and headless:
@@ -81,6 +82,7 @@ class TikTokAPI:
         self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs
         self.navigation_timeout = navigation_timeout
+        self.navigation_retries = navigation_retries
 
     def __enter__(self):
         self._playwright = sync_playwright().start()
@@ -183,7 +185,17 @@ class TikTokAPI:
         page.route("**/api/comment/list/*", capture_api_extras)
         page.route("**/api/post/item_list/*", capture_api_extras)
 
-        page.goto(link, wait_until=self.wait_until)
+        for _ in range(self.navigation_retries + 1):
+            try:
+                page.goto(link, wait_until=self.wait_until)
+            except TimeoutError:
+                continue
+            break
+        else:
+            raise TimeoutError(
+                f"Data scraping unable to complete in {self.navigation_timeout / 1000}s "
+                f"(retries: {self.navigation_retries})"
+            )
 
         if self.scroll_down_time > 0:
             self._scroll_page_down(page, self.scroll_down_time)

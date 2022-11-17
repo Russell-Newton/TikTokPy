@@ -3,7 +3,7 @@ import json
 from typing import List, Tuple, Type
 
 import requests
-from playwright.async_api import Page, Request, Route, async_playwright
+from playwright.async_api import Page, Request, Route, TimeoutError, async_playwright
 from tiktokapipy.api import (
     DataModelT,
     LightUserGetter,
@@ -94,7 +94,17 @@ class AsyncTikTokAPI(TikTokAPI):
         await page.route("**/api/comment/list/*", capture_api_extras)
         await page.route("**/api/post/item_list/*", capture_api_extras)
 
-        await page.goto(link, wait_until=self.wait_until)
+        for _ in range(self.navigation_retries + 1):
+            try:
+                await page.goto(link, wait_until=self.wait_until)
+            except TimeoutError:
+                continue
+            break
+        else:
+            raise TimeoutError(
+                f"Data scraping unable to complete in {self.navigation_timeout / 1000}s "
+                f"(retries: {self.navigation_retries})"
+            )
 
         if self.scroll_down_time > 0:
             await self._scroll_page_down(page, self.scroll_down_time)
