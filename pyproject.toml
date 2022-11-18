@@ -44,10 +44,12 @@ test = [
     "tox",
 ]
 docs = [
+    "docutils>=0.18",
     "sphinx",
+    "sphinx-rtd-theme",
     "sphinx-autodoc-typehints",
     "autodoc_pydantic",
-    "sphinx-tabs"
+    "sphinx-tabs",
 ]
 
 [project.urls]

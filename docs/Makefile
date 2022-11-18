@@ -8,10 +8,11 @@ SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = source
 BUILDDIR      = build
 
-ifeq ($(OS),Windows_NT)
+# This is a way to see if the current OS is windows. $(OS) is empty in tox, so this is the solution
+ifeq ($(shell echo "check_quotes"),"check_quotes")
 	RM_CLEAN_AUTOSUMMARY=if exist "$(SOURCEDIR)\generated" rmdir /q /s "$(SOURCEDIR)\generated"
 else
-	RM_CLEAN_AUTOSUMMARY=rm -rf $(SOURCEDIR)/generated
+	RM_CLEAN_AUTOSUMMARY=rm -rf ./$(SOURCEDIR)/generated/
 endif
 
 # Put it first so that "make" without argument is like "make help".
