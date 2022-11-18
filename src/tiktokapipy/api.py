@@ -89,16 +89,16 @@ class TikTokAPI:
         """
         :param wait_until: When navigating to a page, when should navigation be considered done?
         :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
-        load more content from the page. Incompatible with ``headless=True``. Set to 0 to not scroll down.
+            load more content from the page. Incompatible with ``headless=True``. Set to 0 to not scroll down.
         :param headless: Whether or not to use headless browsing. Headless browsing is incompatible with non-zero
-        ``scroll_down_time``. Set to ``None`` to have this be determined by ``scroll_down_time``.
+            ``scroll_down_time``. Set to ``None`` to have this be determined by ``scroll_down_time``.
         :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
-        specify the name of the dump file (exluding '.json').
+            specify the name of the dump file (exluding '.json').
         :param emulate_mobile: Whether or not to emulate a mobile device during sraping. Required for retrieving data
-        on slideshows.
+            on slideshows.
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
-        not retry navigation.
+            not retry navigation.
         :param context_kwargs: Any extra kwargs used to initialize the playwright browser context.
         """
         if scroll_down_time > 0 and headless:
