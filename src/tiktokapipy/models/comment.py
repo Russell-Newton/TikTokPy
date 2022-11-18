@@ -14,7 +14,7 @@ class Comment(CamelCaseModel):
     ############################
     # Content and interactions #
     ############################
-    user: "Union[User, str]"
+    user: "Union[LightUser, str]"
     text: str
     digg_count: int
     # user_digged: int            # liked by you
@@ -45,9 +45,9 @@ class Comment(CamelCaseModel):
     # trans_btn_style: int
     # label_list: Optional[list]
 
-    creator: "Optional[Callable[[], Union[User, Awaitable[User]]]]"
+    author: "Optional[Callable[[], Union[User, Awaitable[User]]]]"
 
 
-from tiktokapipy.models.user import User  # noqa E402
+from tiktokapipy.models.user import LightUser, User  # noqa E402
 
 Comment.update_forward_refs()

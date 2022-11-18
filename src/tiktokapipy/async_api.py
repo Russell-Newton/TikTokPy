@@ -18,6 +18,8 @@ from tiktokapipy.models.video import Video, video_link
 
 
 class AsyncLightVideoIter(LightVideosIter):
+    """:autodoc-skip:"""
+
     async def fetch_video(self) -> Video:
         video = await self._api.video(video_link(self._videos[self.next_up].id))
         self.next_up += 1
@@ -34,15 +36,19 @@ class AsyncLightVideoIter(LightVideosIter):
 
 
 class AsyncLightUserGetter(LightUserGetter):
+    """:autodoc-skip:"""
+
     async def __call__(self) -> User:
         return await self._api.user(self._user.unique_id)
 
 
 class AsyncTikTokAPI(TikTokAPI):
+    """Asynchronous API used to scrape data from TikTok"""
+
     def __enter__(self):
         raise TikTokAPIError("Must use async context manager with AsyncTikTokAPI")
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "AsyncTikTokAPI":
         self._playwright = await async_playwright().start()
 
         self._browser = await self.playwright.chromium.launch(headless=self.headless)

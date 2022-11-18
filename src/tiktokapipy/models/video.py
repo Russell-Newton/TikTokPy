@@ -1,5 +1,6 @@
 from typing import Awaitable, Callable, List, Optional, Union
 
+from pydantic import Field
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 
 
@@ -74,7 +75,7 @@ class ImageUrlList(CamelCaseModel):
 
 
 class ImageData(CamelCaseModel):
-    image_u_r_l: ImageUrlList
+    image_url: ImageUrlList = Field(alias="imageURL")
     image_width: int
     image_height: int
 
@@ -87,6 +88,8 @@ class ImagePost(CamelCaseModel):
 
 
 class LightVideo(CamelCaseModel):
+    """:autodoc-skip:"""
+
     id: int
 
 
@@ -94,26 +97,36 @@ class Video(LightVideo):
     #####################
     # Content and stats #
     #####################
-    desc: str
-    stats: VideoStats
-    diversification_labels: Optional[List[str]]  # video categories/tags
-    challenges: "Optional[List[Challenge]]"  # hashtags
-    video: VideoData  # contains video file information, subtitle info, and download links
-    music: MusicData  # contains sound/bg music information and download links
-    # digged: bool                               # liked by you
+    desc: str = Field(description="Video description created by the Author")
+    stats: VideoStats = Field(description="Stats about the video")
+    diversification_labels: Optional[List[str]] = Field(
+        description="Tags/Categories applied to the video"
+    )
+    challenges: "Optional[List[Challenge]]" = Field(
+        description="Challenges applied to the video"
+    )
+    video: VideoData
+    music: MusicData
+    # digged: bool
     # item_comment_status: int
-    location_created: Optional[str]
-    image_post: Optional[ImagePost]
+    # location_created: Optional[str]
+    image_post: Optional[ImagePost] = Field(
+        description="The images in the video if the video is a slideshow."
+    )
 
     ######################
     # Author information #
     ######################
-    author: "Union[User, str]"
-    nickname: Optional[str]
-    author_id: Optional[int]
+    author: "Union[LightUser, str]"
+    """
+    We don't want to grab anything more than the unique_id so we can generate the lazy user getter.
+    :autodoc-skip:
+    """
+    # nickname: Optional[str]
+    # author_id: Optional[int]  # redundant with the lazy author getter
     # author_sec_id: Optional[str]
     # avatar_thumb: Optional[Union[str, dict]]
-    author_stats: "UserStats"
+    # author_stats: "UserStats"
 
     ##########################
     # Duet/stitching/sharing #
@@ -130,7 +143,7 @@ class Video(LightVideo):
     ##########################################################
     # Ad and Security info (not sure what most of these are) #
     ##########################################################
-    is_ad: bool
+    # is_ad: bool
     # ad_authorization: bool
     # ad_label_version: int
     # original_item: bool
@@ -153,16 +166,20 @@ class Video(LightVideo):
     # for_friend: bool
     # vl1: bool
 
-    comments: "Optional[List[Comment]]"
-    creator: "Optional[Callable[[], Union[User, Awaitable[User]]]]"
+    comments: "Optional[List[Comment]]" = Field(
+        description="Set on return from API. Contains all comments gathered during scraping."
+    )
+    creator: "Optional[Callable[[], Union[User, Awaitable[User]]]]" = Field(
+        description="Set on return from API. Call to scrape the video creator data."
+    )
 
 
 from tiktokapipy.models.challenge import Challenge  # noqa E402
 from tiktokapipy.models.comment import Comment  # noqa E402
-from tiktokapipy.models.user import User, UserStats  # noqa E402
+from tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
 
 Video.update_forward_refs()
 
 
-def video_link(_id: int):
-    return f"https://m.tiktok.com/v/{_id}"
+def video_link(video_id: int):
+    return f"https://m.tiktok.com/v/{video_id}"

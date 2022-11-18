@@ -9,7 +9,7 @@ async def test_slideshow_async(async_api_mobile, slideshow_id):
     assert video
     assert video.image_post
     assert video.image_post.images
-    assert video.image_post.images[0].image_u_r_l.url_list
+    assert video.image_post.images[0].image_url.url_list
     assert await video.creator()
 
 
@@ -19,7 +19,7 @@ def test_slideshow_sync(sync_api_mobile, slideshow_id):
     assert video
     assert video.image_post
     assert video.image_post.images
-    assert video.image_post.images[0].image_u_r_l.url_list
+    assert video.image_post.images[0].image_url.url_list
     assert video.creator()
 
 

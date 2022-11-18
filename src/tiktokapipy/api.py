@@ -24,10 +24,18 @@ DataModelT = TypeVar("DataModelT", bound=PrimaryResponseType)
 
 
 class TikTokAPIError(Exception):
+    """Raised when the API encounters an error."""
+
     pass
 
 
 class LightVideosIter:
+    """
+    Utility class to lazy-load videos retrieved under a :class:`.Challenge` or :class:`.User` so they aren't all
+    loaded at once.
+    :autodoc-skip:
+    """
+
     def __init__(self, videos: List[LightVideo], api: "TikTokAPI"):
         self._videos = videos
         self._api = api
@@ -48,6 +56,12 @@ class LightVideosIter:
 
 
 class LightUserGetter:
+    """
+    Utility class to lazy-load a user retrieved under a :class:`.Comment` or :class:`.Video` so they aren't all loaded
+    at once.
+    :autodoc-skip:
+    """
+
     def __init__(self, user: str, api: "TikTokAPI"):
         self._user = LightUser(unique_id=user)
         self._api = api
@@ -57,6 +71,8 @@ class LightUserGetter:
 
 
 class TikTokAPI:
+    """Synchronous API used to scrape data from TikTok"""
+
     def __init__(
         self,
         wait_until: Literal[
@@ -70,6 +86,21 @@ class TikTokAPI:
         navigation_retries: int = 0,
         **context_kwargs,
     ):
+        """
+        :param wait_until: When navigating to a page, when should navigation be considered done?
+        :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
+        load more content from the page. Incompatible with ``headless=True``. Set to 0 to not scroll down.
+        :param headless: Whether or not to use headless browsing. Headless browsing is incompatible with non-zero
+        ``scroll_down_time``. Set to ``None`` to have this be determined by ``scroll_down_time``.
+        :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
+        specify the name of the dump file (exluding '.json').
+        :param emulate_mobile: Whether or not to emulate a mobile device during sraping. Required for retrieving data
+        on slideshows.
+        :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out.
+        :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
+        not retry navigation.
+        :param context_kwargs: Any extra kwargs used to initialize the playwright browser context.
+        """
         if scroll_down_time > 0 and headless:
             raise ValueError("Cannot scroll down with a headless browser")
         self.wait_until = wait_until
@@ -84,7 +115,7 @@ class TikTokAPI:
         self.navigation_timeout = navigation_timeout
         self.navigation_retries = navigation_retries
 
-    def __enter__(self):
+    def __enter__(self) -> "TikTokAPI":
         self._playwright = sync_playwright().start()
 
         self._browser = self.playwright.chromium.launch(headless=self.headless)
@@ -104,18 +135,21 @@ class TikTokAPI:
 
     @property
     def playwright(self):
+        """The playwright instance used for data scraping"""
         if not hasattr(self, "_playwright"):
             raise TikTokAPIError("TikTokAPI must be used as a context manager")
         return self._playwright
 
     @property
     def browser(self):
+        """The playwright Browser instance used for data scraping"""
         if not hasattr(self, "_browser"):
             raise TikTokAPIError("TikTokAPI must be used as a context manager")
         return self._browser
 
     @property
     def context(self):
+        """The playwright Context instance used for data scraping"""
         if not hasattr(self, "_context"):
             raise TikTokAPIError("TikTokAPI must be used as a context manager")
         return self._context
@@ -147,16 +181,42 @@ class TikTokAPI:
         return VideoResponse
 
     def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
+        """
+        Retrieve data on a :class:`.Challenge` (hashtag) from TikTok. Only up to the ``video_limit`` most recent videos
+        will be retrievable by the scraper.
+
+        :param challenge_name: The name of the challenge. e.g.: ``"fyp"``
+        :param video_limit: The max number of recent videos to retrieve
+        :return: A :class:`.Challenge` object containing the scraped data
+        :rtype: :class:`.Challenge`
+        """
         link = challenge_link(challenge_name)
         response, api_extras = self._scrape_data(link, self._challenge_response_type)
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
     def user(self, user: Union[int, str], video_limit: int = 25) -> User:
+        """
+        Retrieve data on a :class:`.User` from TikTok. Only up to the ``video_limit`` most recent videos will be
+        retrievable by the scraper.
+
+        :param user: The unique username or id of the user. e.g.: for @tiktok, use ``"tiktok"``
+        :param video_limit: The max number of recent videos to retrieve
+        :return: A :class:`.User` object containing the scraped data
+        :rtype: :class:`.User`
+        """
         link = user_link(user)
         response, api_extras = self._scrape_data(link, self._user_response_type)
         return self._extract_user_from_response(response, api_extras, video_limit)
 
     def video(self, link: str) -> Video:
+        """
+        Retrieve data on a :class:`.Video` from TikTok. If the video is a slideshow, :attr:`.emulate_mobile` must be
+        set to ``True`` at API initialization or this method will raise a :exc:`TikTokAPIError`.
+
+        :param link: The link to the video. Can be found from a unique video id with :func:`.video_link`.
+        :return: A :class:`.Video` object containing the scraped data
+        :rtype: :class:`.Video`
+        """
         response, api_extras = self._scrape_data(link, self._video_response_type)
         return self._extract_video_from_response(response, api_extras)
 
@@ -297,19 +357,19 @@ class TikTokAPI:
                 if extra.comments:
                     comments += extra.comments
         for comment in comments:
-            if isinstance(comment.user, User):
-                comment.creator = self._light_user_getter_type(
+            if isinstance(comment.user, LightUser):
+                comment.author = self._light_user_getter_type(
                     comment.user.unique_id, self
                 )
             else:
-                comment.creator = self._light_user_getter_type(comment.user, self)
+                comment.author = self._light_user_getter_type(comment.user, self)
 
         video.comments = comments
         if not video.comments:
             warnings.warn(
                 "Was unable to collect comments.\nA second attempt might work."
             )
-        if isinstance(video.author, User):
+        if isinstance(video.author, LightUser):
             video.creator = self._light_user_getter_type(video.author.unique_id, self)
         else:
             video.creator = self._light_user_getter_type(video.author, self)

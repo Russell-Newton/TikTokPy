@@ -43,10 +43,14 @@ def _to_title(field: str) -> str:
 
 
 class TikTokDataModel(BaseModel):
+    """:autodoc-skip:"""
+
     pass
 
 
 class CamelCaseModel(TikTokDataModel):
+    """:autodoc-skip:"""
+
     class Config:
         alias_generator = _to_camel
         allow_population_by_field_name = True
@@ -54,6 +58,8 @@ class CamelCaseModel(TikTokDataModel):
 
 
 class TitleCaseModel(TikTokDataModel):
+    """:autodoc-skip:"""
+
     class Config:
         alias_generator = _to_title
         allow_population_by_field_name = True
