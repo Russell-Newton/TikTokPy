@@ -1,3 +1,7 @@
+"""
+Synchronous API for data scraping
+"""
+
 import json
 import time
 import warnings
@@ -5,6 +9,7 @@ from typing import List, Literal, Tuple, Type, TypeVar, Union
 
 import requests
 from playwright.sync_api import Page, Request, Route, TimeoutError, sync_playwright
+from tiktokapipy import TikTokAPIError
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import (
     APIResponse,
@@ -21,12 +26,6 @@ from tiktokapipy.models.user import LightUser, User, user_link
 from tiktokapipy.models.video import LightVideo, Video, video_link
 
 DataModelT = TypeVar("DataModelT", bound=PrimaryResponseType)
-
-
-class TikTokAPIError(Exception):
-    """Raised when the API encounters an error."""
-
-    pass
 
 
 class LightVideosIter:
@@ -75,6 +74,7 @@ class TikTokAPI:
 
     def __init__(
         self,
+        *,
         wait_until: Literal[
             "domcontentloaded", "load", "networkidle", "commit"
         ] = "networkidle",
@@ -90,11 +90,11 @@ class TikTokAPI:
         :param wait_until: When navigating to a page, when should navigation be considered done?
         :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
             load more content from the page. Incompatible with ``headless=True``. Set to 0 to not scroll down.
-        :param headless: Whether or not to use headless browsing. Headless browsing is incompatible with non-zero
+        :param headless: Whether to use headless browsing. Headless browsing is incompatible with non-zero
             ``scroll_down_time``. Set to ``None`` to have this be determined by ``scroll_down_time``.
         :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
             specify the name of the dump file (exluding '.json').
-        :param emulate_mobile: Whether or not to emulate a mobile device during sraping. Required for retrieving data
+        :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
             on slideshows.
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
@@ -199,7 +199,7 @@ class TikTokAPI:
         Retrieve data on a :class:`.User` from TikTok. Only up to the ``video_limit`` most recent videos will be
         retrievable by the scraper.
 
-        :param user: The unique username or id of the user. e.g.: for @tiktok, use ``"tiktok"``
+        :param user: The unique user or id of the user. e.g.: for @tiktok, use ``"tiktok"``
         :param video_limit: The max number of recent videos to retrieve
         :return: A :class:`.User` object containing the scraped data
         :rtype: :class:`.User`

@@ -1,8 +1,13 @@
+"""
+Pydantic models used to load and store TikTok data
+"""
+
 import json
 from re import sub
 from typing import Union
 
 from pydantic import BaseModel
+from pydantic.main import ModelMetaclass
 
 
 def _sub_id_recursive(obj: Union[dict, list]):
@@ -42,10 +47,22 @@ def _to_title(field: str) -> str:
     return field
 
 
-class TikTokDataModel(BaseModel):
+class DataModelDefaultDocumentor(ModelMetaclass):
     """:autodoc-skip:"""
 
-    pass
+    def __init__(cls, *args):
+        if not cls.__doc__:
+            cls.__doc__ = f"{cls.__name__} data"
+        super().__init__(*args)
+
+
+class TikTokDataModel(BaseModel, metaclass=DataModelDefaultDocumentor):
+    """:autodoc-skip:"""
+
+    def __init_subclass__(cls, **kwargs):
+        if not cls.__doc__:
+            cls.__doc__ = f"{cls.__name__} model"
+            super.__init_subclass__()
 
 
 class CamelCaseModel(TikTokDataModel):

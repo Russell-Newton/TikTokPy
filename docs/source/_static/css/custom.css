@@ -1,5 +1,9 @@
 @import url("theme.css");
 
+.center {
+    text-align: center;
+}
+
 .wy-nav-content {
     padding: 1.618em 3.236em;
     height: 100%;

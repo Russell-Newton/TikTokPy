@@ -1,3 +1,8 @@
+"""
+Unprocessed data retrieved directly from TikTok
+:autodoc-skip:
+"""
+
 import abc
 from typing import Dict, Generic, List, Optional, TypeVar, Union
 
@@ -9,24 +14,34 @@ from tiktokapipy.models.video import LightVideo, Video
 
 
 class UserModule(CamelCaseModel):
+    """:autodoc-skip:"""
+
     users: Dict[str, User]
     stats: Dict[str, UserStats]
 
 
 class ChallengeInfo(CamelCaseModel):
+    """:autodoc-skip:"""
+
     challenge: Challenge
     stats: ChallengeStats
 
 
 class StatusPage(CamelCaseModel):
+    """:autodoc-skip:"""
+
     status_code: int
 
 
 class ChallengePage(StatusPage):
+    """:autodoc-skip:"""
+
     challenge_info: Optional[ChallengeInfo]
 
 
 class APIResponse(CamelCaseModel):
+    """:autodoc-skip:"""
+
     status_code: int = 0
     cursor: Optional[int]
     has_more: Union[bool, int]
@@ -37,10 +52,14 @@ class APIResponse(CamelCaseModel):
 
 
 class PrimaryResponseType(TitleCaseModel):
+    """:autodoc-skip:"""
+
     pass
 
 
 class ChallengeResponse(PrimaryResponseType):
+    """:autodoc-skip:"""
+
     item_module: Optional[Dict[int, LightVideo]]
     challenge_page: ChallengePage
 
@@ -49,6 +68,8 @@ DesktopResponseT = TypeVar("DesktopResponseT")
 
 
 class MobileResponseMixin(abc.ABC, Generic[DesktopResponseT]):
+    """:autodoc-skip:"""
+
     @abc.abstractmethod
     def to_desktop(self) -> DesktopResponseT:
         pass
@@ -57,6 +78,8 @@ class MobileResponseMixin(abc.ABC, Generic[DesktopResponseT]):
 class MobileChallengeResponse(
     PrimaryResponseType, MobileResponseMixin[ChallengeResponse]
 ):
+    """:autodoc-skip:"""
+
     mobile_item_module: Optional[Dict[int, LightVideo]]
     mobile_challenge_page: ChallengePage
 
@@ -68,12 +91,16 @@ class MobileChallengeResponse(
 
 
 class UserResponse(PrimaryResponseType):
+    """:autodoc-skip:"""
+
     item_module: Optional[Dict[int, LightVideo]]
     user_module: Optional[UserModule]
     user_page: StatusPage
 
 
 class MobileUserResponse(PrimaryResponseType, MobileResponseMixin[UserResponse]):
+    """:autodoc-skip:"""
+
     mobile_item_module: Optional[Dict[int, LightVideo]]
     mobile_user_page: StatusPage
     mobile_user_module: Optional[UserModule]
@@ -87,20 +114,28 @@ class MobileUserResponse(PrimaryResponseType, MobileResponseMixin[UserResponse])
 
 
 class VideoResponse(PrimaryResponseType):
+    """:autodoc-skip:"""
+
     item_module: Optional[Dict[int, Video]]
     comment_item: Optional[Dict[int, Comment]]
     video_page: StatusPage
 
 
 class MobileVideoData(StatusPage):
+    """:autodoc-skip:"""
+
     item_info: Optional[Dict[str, Video]]
 
 
 class MobileVideoModule(CamelCaseModel):
+    """:autodoc-skip:"""
+
     video_data: MobileVideoData
 
 
 class MobileVideoResponse(PrimaryResponseType, MobileResponseMixin[VideoResponse]):
+    """:autodoc-skip:"""
+
     sharing_video_module: MobileVideoModule
     mobile_sharing_comment: APIResponse
 

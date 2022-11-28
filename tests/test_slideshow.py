@@ -1,5 +1,5 @@
 import pytest
-from tiktokapipy.api import TikTokAPIError
+from tiktokapipy import TikTokAPIError
 from tiktokapipy.models.video import video_link
 
 

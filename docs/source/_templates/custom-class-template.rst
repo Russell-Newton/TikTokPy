@@ -1,4 +1,6 @@
-{{ fullname | escape | underline}}
+:github_url: hide
+
+{{ name | escape | underline}}
 
 .. currentmodule:: {{ module }}
 

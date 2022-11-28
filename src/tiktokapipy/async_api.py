@@ -1,16 +1,15 @@
+"""
+Asynchronous API for data scraping
+"""
+
 import asyncio
 import json
 from typing import List, Tuple, Type
 
 import requests
 from playwright.async_api import Page, Request, Route, TimeoutError, async_playwright
-from tiktokapipy.api import (
-    DataModelT,
-    LightUserGetter,
-    LightVideosIter,
-    TikTokAPI,
-    TikTokAPIError,
-)
+from tiktokapipy import TikTokAPIError
+from tiktokapipy.api import DataModelT, LightUserGetter, LightVideosIter, TikTokAPI
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import APIResponse
 from tiktokapipy.models.user import User, user_link

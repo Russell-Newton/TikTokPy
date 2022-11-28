@@ -11,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(
-    0, os.path.abspath("../../src/tiktokapipy")
+    0, os.path.abspath("../../src")
 )  # Source code dir relative to this file
 sys.path.insert(0, os.path.abspath("../ext"))  # Custom ext dir relative to this file
 
@@ -38,6 +38,8 @@ extensions = [
 templates_path = ["_templates"]
 exclude_patterns = []
 
+sphinx_tabs_disable_tab_closing = True
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
@@ -57,9 +59,12 @@ html_theme_options = {
     "titles_only": False,
 }
 
-# -- Autodoc configuration
+# -- Autodoc configuration ---------------------------------------------------
 
 autosummary_generate = True  # Turn on pydantic_autosummary
+autosummary_mock_imports = [  # Prevent certain modules from generating
+    "tiktokapipy.models.raw_data",
+]
 autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = (
     False  # Remove "view source code" from top of page (for html, not python)

@@ -1,22 +1,41 @@
 ====================================
-Welcome to TikTokPy's documentation!
+Welcome to TikTokPy's Documentation!
 ====================================
 
-**Extract data from TikTok without needing any login information or API keys.**
+.. rst-class:: center
 
 |PyPIBadge|_ |PythonBadge|_ |BuildBadge|_
 
+**Extract data from TikTok without needing any login information or API keys.**
+
+Getting Started
+---------------
+
+:doc:`Installation <users/installation>`
+    How to install TikTokPy in your project.
+:doc:`How to Use TikTokPy <users/usage>`
+    How to use TikTokPy to grab data from TikTok.
+
+Reference
+-------------
+
+:doc:`API Reference <reference/api_reference>`
+    API reference information about library content.
+
+.. Hidden TOCs
+
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
     :caption: Getting Started
+    :hidden:
 
     users/installation
     users/usage
-    users/examples
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 4
     :caption: Reference
+    :hidden:
 
     reference/api_reference
 
@@ -26,7 +45,7 @@ Welcome to TikTokPy's documentation!
 
 .. |PythonBadge| image:: https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square&logo=python
     :height: 1.5em
-.. _PythonBadge: http://www.python.org/
+.. _PythonBadge: https://www.python.org
 
 .. |BuildBadge| image:: https://img.shields.io/github/workflow/status/Russell-Newton/TikTokPy/Unit%20Tests?style=flat-square&logo=github
     :height: 1.5em

@@ -54,3 +54,4 @@ docs = [
 
 [project.urls]
 "Homepage" = "https://github.com/Russell-Newton/TikTokPy"
+"Documentation" = "https://tiktokpy.readthedocs.io/en/latest/"

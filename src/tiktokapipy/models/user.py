@@ -1,3 +1,7 @@
+"""User account data models"""
+
+from __future__ import annotations
+
 from typing import Iterable, Optional, Union
 from urllib.parse import quote
 
@@ -6,7 +10,7 @@ from tiktokapipy.models import CamelCaseModel
 
 class BioLink(CamelCaseModel):
     link: str
-    risk: int
+    # risk: int
 
 
 class UserStats(CamelCaseModel):
@@ -21,7 +25,10 @@ class UserStats(CamelCaseModel):
 
 
 class LightUser(CamelCaseModel):
+    """:autodoc-skip:"""
+
     unique_id: str
+    """The User's unique user"""
 
 
 class User(LightUser):
@@ -29,8 +36,10 @@ class User(LightUser):
     # Identification #
     ##################
     id: int
+    """The User's unique id"""
     # short_id: Optional[str]
     nickname: str
+    """The User's display name"""
 
     ########################
     # Security information #
@@ -40,7 +49,7 @@ class User(LightUser):
     verified: Optional[bool]
     # secret: Optional[bool]
     # ftc: Optional[bool]
-    is_under_age_18: Optional[bool]
+    # is_under_age_18: Optional[bool]
 
     ################
     # Avatar links #
@@ -66,12 +75,14 @@ class User(LightUser):
     ###############
     # Misc fields #
     ###############
-    create_time: Optional[int]
+    # create_time: Optional[int]
     # room_id: Optional[str]
     # extra_info: Optional[dict]        # not sure what this is
 
     stats: Optional[UserStats]
-    videos: "Optional[Iterable[Video]]"
+    """Set on return from API. Contains user statistics."""
+    videos: Optional[Iterable[Video]]
+    """Set on return from API. Can be iterated over to load :class:`.Video`s."""
 
 
 from tiktokapipy.models.video import Video  # noqa E402
@@ -79,6 +90,14 @@ from tiktokapipy.models.video import Video  # noqa E402
 User.update_forward_refs()
 
 
-def user_link(username: Union[int, str]) -> str:
-    quoted = quote(username)
+def user_link(user: Union[int, str]) -> str:
+    """
+    Get a link to extract user data from the user's id or unique username.
+
+    e.g.: ``user_link("tiktok")``
+
+    :param user: The user's unique name (no ``'@'``) or id.
+    :return: a link that can be used to scrape data on the User.
+    """
+    quoted = quote(user)
     return f"https://www.tiktok.com/@{quoted}"

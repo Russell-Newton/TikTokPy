@@ -1,10 +1,11 @@
+:github_url: hide
+
 {{ name | escape | underline}}
 
 .. currentmodule:: {{ module }}
 
 .. autopydantic_model:: {{ objname }}
    :members:
-   :show-inheritance:
    :inherited-members: BaseModel
    :special-members: __call__, __add__, __mul__
 

@@ -1,3 +1,7 @@
+"""Video data models"""
+
+from __future__ import annotations
+
 from typing import Awaitable, Callable, List, Optional, Union
 
 from pydantic import Field
@@ -24,6 +28,8 @@ class SubtitleData(TitleCaseModel):
 
 
 class VideoData(CamelCaseModel):
+    """Contains data about a downloadable video"""
+
     id: int
     height: int
     width: int
@@ -55,6 +61,8 @@ class VideoData(CamelCaseModel):
 
 
 class MusicData(CamelCaseModel):
+    """Contains data about the music within a video"""
+
     id: int
     title: str
     play_url: str
@@ -71,19 +79,29 @@ class MusicData(CamelCaseModel):
 
 
 class ImageUrlList(CamelCaseModel):
+    """
+    Contains a list of 3 urls that can be used to access an image. Each URL is different, sometimes only the last will
+    be populated.
+    """
+
     url_list: List[str]
 
 
 class ImageData(CamelCaseModel):
-    image_url: ImageUrlList = Field(alias="imageURL")
+    image_url: ImageUrlList = Field(
+        ..., alias="imageURL", description="3 urls that can be used to access the image"
+    )
     image_width: int
     image_height: int
 
 
 class ImagePost(CamelCaseModel):
     images: List[ImageData]
+    """All images in the slideshow"""
     cover: ImageData
+    """Still image on the video before playing"""
     share_cover: ImageData
+    """Still image embedded with a sharing link"""
     title: str
 
 
@@ -91,33 +109,33 @@ class LightVideo(CamelCaseModel):
     """:autodoc-skip:"""
 
     id: int
+    """The unique video ID"""
 
 
 class Video(LightVideo):
     #####################
     # Content and stats #
     #####################
-    desc: str = Field(description="Video description created by the Author")
-    stats: VideoStats = Field(description="Stats about the video")
-    diversification_labels: Optional[List[str]] = Field(
-        description="Tags/Categories applied to the video"
-    )
-    challenges: "Optional[List[Challenge]]" = Field(
-        description="Challenges applied to the video"
-    )
+    desc: str
+    """Video description"""
+    stats: VideoStats
+    """Stats about the video"""
+    diversification_labels: Optional[List[str]]
+    """Tags/Categories applied to the video"""
+    challenges: Optional[List[Challenge]]
+    """:class:`.Challenge`s applied to the video"""
     video: VideoData
     music: MusicData
     # digged: bool
     # item_comment_status: int
     # location_created: Optional[str]
-    image_post: Optional[ImagePost] = Field(
-        description="The images in the video if the video is a slideshow."
-    )
+    image_post: Optional[ImagePost]
+    """The images in the video if the video is a slideshow"""
 
     ######################
     # Author information #
     ######################
-    author: "Union[LightUser, str]"
+    author: Union[LightUser, str]
     """
     We don't want to grab anything more than the unique_id so we can generate the lazy user getter.
     :autodoc-skip:
@@ -166,12 +184,10 @@ class Video(LightVideo):
     # for_friend: bool
     # vl1: bool
 
-    comments: "Optional[List[Comment]]" = Field(
-        description="Set on return from API. Contains all comments gathered during scraping."
-    )
-    creator: "Optional[Callable[[], Union[User, Awaitable[User]]]]" = Field(
-        description="Set on return from API. Call to scrape the video creator data."
-    )
+    comments: Optional[List[Comment]]
+    """Set on return from API. Contains all :class:`.Comment`s gathered during scraping."""
+    creator: Optional[Callable[[], Union[User, Awaitable[User]]]]
+    """Set on return from API. Call to retrieve data on the :class:`.User` that created the video."""
 
 
 from tiktokapipy.models.challenge import Challenge  # noqa E402
@@ -181,5 +197,6 @@ from tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
 Video.update_forward_refs()
 
 
-def video_link(video_id: int):
+def video_link(video_id: int) -> str:
+    """Get a working link to a TikTok video from the video's unique id."""
     return f"https://m.tiktok.com/v/{video_id}"

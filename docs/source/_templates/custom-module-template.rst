@@ -1,3 +1,5 @@
+:github_url: hide
+
 {{ name | escape | underline}}
 
 .. automodule:: {{ fullname }}
