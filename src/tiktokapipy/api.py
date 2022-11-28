@@ -9,6 +9,7 @@ from typing import List, Literal, Tuple, Type, TypeVar, Union
 
 import requests
 from playwright.sync_api import Page, Request, Route, TimeoutError, sync_playwright
+from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models.challenge import Challenge, challenge_link
 from tiktokapipy.models.raw_data import (
@@ -248,23 +249,25 @@ class TikTokAPI:
         for _ in range(self.navigation_retries + 1):
             try:
                 page.goto(link, wait_until=self.wait_until)
-            except TimeoutError:
+
+                if self.scroll_down_time > 0:
+                    self._scroll_page_down(page, self.scroll_down_time)
+
+                content = page.content()
+
+                data = self._extract_and_dump_data(content, extras_json, data_model)
+            except (TimeoutError, ValidationError):
                 continue
             break
         else:
-            raise TimeoutError(
+            raise TikTokAPIError(
                 f"Data scraping unable to complete in {self.navigation_timeout / 1000}s "
                 f"(retries: {self.navigation_retries})"
             )
 
-        if self.scroll_down_time > 0:
-            self._scroll_page_down(page, self.scroll_down_time)
-
-        content = page.content()
-
         page.close()
 
-        return self._extract_and_dump_data(content, extras_json, data_model), api_extras
+        return data, api_extras
 
     def _extract_and_dump_data(
         self, page_content: str, extras_json: List[dict], data_model: Type[DataModelT]

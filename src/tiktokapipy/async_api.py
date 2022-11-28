@@ -8,6 +8,7 @@ from typing import List, Tuple, Type
 
 import requests
 from playwright.async_api import Page, Request, Route, TimeoutError, async_playwright
+from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.api import DataModelT, LightUserGetter, LightVideosIter, TikTokAPI
 from tiktokapipy.models.challenge import Challenge, challenge_link
@@ -102,23 +103,25 @@ class AsyncTikTokAPI(TikTokAPI):
         for _ in range(self.navigation_retries + 1):
             try:
                 await page.goto(link, wait_until=self.wait_until)
-            except TimeoutError:
+
+                if self.scroll_down_time > 0:
+                    await self._scroll_page_down(page, self.scroll_down_time)
+
+                content = await page.content()
+
+                data = self._extract_and_dump_data(content, extras_json, data_model)
+            except (TimeoutError, ValidationError):
                 continue
             break
         else:
-            raise TimeoutError(
+            raise TikTokAPIError(
                 f"Data scraping unable to complete in {self.navigation_timeout / 1000}s "
                 f"(retries: {self.navigation_retries})"
             )
 
-        if self.scroll_down_time > 0:
-            await self._scroll_page_down(page, self.scroll_down_time)
-
-        content = await page.content()
-
         await page.close()
 
-        return self._extract_and_dump_data(content, extras_json, data_model), api_extras
+        return data, api_extras
 
     async def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
         link = challenge_link(challenge_name)
