@@ -1,5 +1,5 @@
-<h1 style="text-align: center">TikTokPy</h1>
-<div style="text-align: center">
+<h1 align="center">TikTokPy</h1>
+<div align="center">
     <a href="https://pypi.org/project/tiktokapipy/">
         <img src="https://img.shields.io/pypi/v/tiktokapipy?style=flat-square&logo=pypi">
     </a>
