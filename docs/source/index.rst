@@ -1,3 +1,5 @@
+.. rst-class:: center-title
+
 ====================================
 Welcome to TikTokPy's Documentation!
 ====================================

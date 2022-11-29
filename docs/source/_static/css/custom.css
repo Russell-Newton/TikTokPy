@@ -4,6 +4,10 @@
     text-align: center;
 }
 
+.center-title > h1 {
+    text-align: center;
+}
+
 .wy-nav-content {
     padding: 1.618em 3.236em;
     height: 100%;
