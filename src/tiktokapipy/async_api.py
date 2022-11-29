@@ -54,8 +54,12 @@ class AsyncTikTokAPI(TikTokAPI):
         self._browser = await self.playwright.chromium.launch(headless=self.headless)
 
         context_kwargs = self.context_kwargs
+
         if self.emulate_mobile:
             context_kwargs.update(self.playwright.devices["iPhone 12"])
+        else:
+            context_kwargs.update(self.playwright.devices["Desktop Edge"])
+
         self._context = await self.browser.new_context(**context_kwargs)
         self.context.set_default_navigation_timeout(self.navigation_timeout)
 
@@ -110,7 +114,7 @@ class AsyncTikTokAPI(TikTokAPI):
                 content = await page.content()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
-            except (TimeoutError, ValidationError):
+            except (TimeoutError, ValidationError, IndexError):
                 continue
             break
         else:
