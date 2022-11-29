@@ -65,9 +65,9 @@ with TikTokAPI() as api:
 <td>
 
 ```py
-from tiktokapipy.async_api import TikTokAPI
+from tiktokapipy.async_api import AsyncTikTokAPI
 
-async with TikTokAPI() as api:
+async with AsyncTikTokAPI() as api:
     video = await api.video(video_link)
     ...
 ```

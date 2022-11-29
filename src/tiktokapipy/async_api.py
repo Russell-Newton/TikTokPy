@@ -173,3 +173,6 @@ class AsyncTikTokAPI(TikTokAPI):
         await asyncio.sleep(scroll_down_time)
 
         await page.evaluate("clearInterval(intervalID)")
+
+
+__all__ = ["AsyncTikTokAPI"]

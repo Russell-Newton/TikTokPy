@@ -412,3 +412,6 @@ class TikTokAPI:
         time.sleep(scroll_down_time)
 
         page.evaluate("clearInterval(intervalID)")
+
+
+__all__ = ["TikTokAPI"]

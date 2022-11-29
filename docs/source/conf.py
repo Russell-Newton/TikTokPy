@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../ext"))  # Custom ext dir relative to this
 project = "TikTokPy"
 copyright = "2022, Russell Newton"
 author = "Russell Newton"
-release = "0.1.1"
+release = "0.1.2"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

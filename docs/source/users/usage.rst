@@ -22,10 +22,10 @@ The TikTokPy API should be used as a context manager in your program:
 
     .. code-tab:: py AsyncTikTokAPI
 
-            from tiktokapipy.async_api import TikTokAPI
+            from tiktokapipy.async_api import AsyncTikTokAPI
 
             async def do_something():
-                async with TikTokAPI() as api:
+                async with AsyncTikTokAPI() as api:
                     ...
 
 Examples
@@ -49,10 +49,10 @@ You can get information about videos with a link.
 
     .. code-tab:: py AsyncTikTokAPI
 
-            from tiktokapipy.async_api import TikTokAPI
+            from tiktokapipy.async_api import AsyncTikTokAPI
 
             async def do_something():
-                async with TikTokAPI() as api:
+                async with AsyncTikTokAPI() as api:
                     video = await api.video(video_url)
                     ...
 
@@ -75,10 +75,10 @@ Given a Video object, you can get the User object corresponding to the video cre
 
     .. code-tab:: py AsyncTikTokAPI
 
-            from tiktokapipy.async_api import TikTokAPI
+            from tiktokapipy.async_api import AsyncTikTokAPI
 
             async def do_something():
-                async with TikTokAPI() as api:
+                async with AsyncTikTokAPI() as api:
                     video = await api.video(video_url)
                     creator = await video.creator()
                     ...
@@ -102,10 +102,10 @@ With a User object, you can retrieve their most recent Videos.
 
     .. code-tab:: py AsyncTikTokAPI
 
-            from tiktokapipy.async_api import TikTokAPI
+            from tiktokapipy.async_api import AsyncTikTokAPI
 
             async def do_something():
-                async with TikTokAPI() as api:
+                async with AsyncTikTokAPI() as api:
                     user = await api.user(user_tag)
                     async for video in user.videos:
                         ...
@@ -130,10 +130,10 @@ challenge.
 
     .. code-tab:: py AsyncTikTokAPI
 
-            from tiktokapipy.async_api import TikTokAPI
+            from tiktokapipy.async_api import AsyncTikTokAPI
 
             async def do_something():
-                async with TikTokAPI() as api:
+                async with AsyncTikTokAPI() as api:
                     challenge = await api.challenge(tag_name)
                     async for video in challenge.videos:
                         ...
