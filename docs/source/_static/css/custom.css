@@ -1,4 +1,4 @@
-@import url("theme.css");
+@import "theme.css";
 
 .center {
     text-align: center;
