@@ -78,6 +78,13 @@ async with TikTokAPI() as api:
 
 More examples can be found in the [documentation](https://tiktokpy.readthedocs.io/en/latest/users/usage.html#examples).
 
+> **Warning**
+>
+> Scraping will not always work on the first try. Sporadic network and loading issues could cause extraction to fail.
+> Look at the documentation for the
+> [API parameters](https://tiktokpy.readthedocs.io/en/latest/generated/reference/tiktokapipy.api.TikTokAPI.html#tiktokapipy.api.TikTokAPI)
+> to see what options can help with this.
+
 ## Documentation
 
 You can view the full documentation on [Read the Docs](https://tiktokpy.readthedocs.io/en/latest/).
