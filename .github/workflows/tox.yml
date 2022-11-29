@@ -5,6 +5,11 @@ on:
       - "main"
   pull_request:
   workflow_dispatch:
+  
+# Allow one concurrent tox session
+concurrency:
+  group: "tox"
+  cancel-in-progress: true
 
 jobs:
   run-tox:
