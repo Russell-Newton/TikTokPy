@@ -136,7 +136,8 @@ class TikTokAPI:
             context_kwargs.update(self.playwright.devices["Desktop Edge"])
 
         self._context = self.browser.new_context(**context_kwargs)
-        self.context.set_default_navigation_timeout(self.navigation_timeout)
+        if self.navigation_timeout > 0:
+            self.context.set_default_navigation_timeout(self.navigation_timeout)
 
         return self
 
