@@ -5,7 +5,7 @@ from tiktokapipy.async_api import AsyncTikTokAPI as AsyncTikTokAPI
 
 @pytest.fixture(scope="session")
 def navigation_timeout():
-    return 5
+    return 0
 
 
 @pytest.fixture(scope="session")
