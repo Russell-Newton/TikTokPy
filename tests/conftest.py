@@ -10,7 +10,7 @@ def navigation_timeout():
 
 @pytest.fixture(scope="session")
 def navigation_retries():
-    return 12
+    return 24
 
 
 @pytest.fixture(scope="session")
