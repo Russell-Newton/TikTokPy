@@ -47,7 +47,7 @@ class Comment(CamelCaseModel):
     ##################
     # Identification #
     ##################
-    id: int
+    id: Optional[int]
     """The Comment's unique id"""
     # share_info: ShareInfo   # contains link to video and some extra information
     video_id: int = Field(
