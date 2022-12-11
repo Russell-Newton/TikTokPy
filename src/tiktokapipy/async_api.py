@@ -2,12 +2,17 @@
 Asynchronous API for data scraping
 """
 
-import asyncio
-import json
 from typing import List, Tuple, Type
 
-import requests
-from playwright.async_api import Page, Request, Route, TimeoutError, async_playwright
+import playwright.async_api
+from playwright.async_api import (
+    APIRequestContext,
+    Page,
+    Request,
+    Route,
+    TimeoutError,
+    async_playwright,
+)
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.api import DataModelT, LightUserGetter, LightVideosIter, TikTokAPI
@@ -81,40 +86,50 @@ class AsyncTikTokAPI(TikTokAPI):
     async def _scrape_data(
         self, link: str, data_model: Type[DataModelT]
     ) -> Tuple[DataModelT, List[APIResponse]]:
-        api_extras = []
-        extras_json = []
+        api_extras: List[APIResponse] = []
+        extras_json: List[dict] = []
 
         async def capture_api_extras(route: Route, request: Request):
-            r = requests.get(
-                request.url,
-                headers=request.headers,
-                cookies={
-                    cookie["name"]: cookie["value"]
-                    for cookie in await self._context.cookies()
-                },
-            )
-            if len(r.content) > 2:
-                extras_json.append(json.loads(r.content.decode("utf-8")))
-                api_response = APIResponse.parse_raw(r.content)
+            request_context: APIRequestContext = self.context.request
+            try:
+                response: playwright.async_api.APIResponse = await request_context.get(
+                    request.url,
+                    headers=request.headers,
+                )
+            except Exception:
+                await route.abort()
+                return
+            body = await response.body()
+            if len(body) > 2:
+                _data = await response.json()
+                extras_json.append(_data)
+                api_response = APIResponse.parse_obj(_data)
                 api_extras.append(api_response)
-            await route.continue_()
-
-        page: Page = await self._context.new_page()
-        await page.route("**/api/challenge/item_list/*", capture_api_extras)
-        await page.route("**/api/comment/list/*", capture_api_extras)
-        await page.route("**/api/post/item_list/*", capture_api_extras)
+            await route.fulfill(
+                status=response.status,
+                headers=response.headers,
+                body=body,
+                response=response,
+            )
 
         for _ in range(self.navigation_retries + 1):
+            self.context.clear_cookies()
+            page: Page = await self._context.new_page()
+            await page.route("**/api/challenge/item_list/*", capture_api_extras)
+            await page.route("**/api/comment/list/*", capture_api_extras)
+            await page.route("**/api/post/item_list/*", capture_api_extras)
             try:
                 await page.goto(link, wait_until=self.wait_until)
 
                 if self.scroll_down_time > 0:
-                    await self._scroll_page_down(page, self.scroll_down_time)
+                    await self._scroll_page_down(page)
 
                 content = await page.content()
+                await page.close()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
             except (TimeoutError, ValidationError, IndexError):
+                await page.close()
                 continue
             break
         else:
@@ -123,18 +138,16 @@ class AsyncTikTokAPI(TikTokAPI):
                 f"(retries: {self.navigation_retries})"
             )
 
-        await page.close()
-
         return data, api_extras
 
-    async def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
+    async def challenge(self, challenge_name: str, video_limit: int = 0) -> Challenge:
         link = challenge_link(challenge_name)
         response, api_extras = await self._scrape_data(
             link, self._challenge_response_type
         )
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
-    async def user(self, user: str, video_limit: int = 25) -> User:
+    async def user(self, user: str, video_limit: int = 0) -> User:
         link = user_link(user)
         response, api_extras = await self._scrape_data(link, self._user_response_type)
         return self._extract_user_from_response(response, api_extras, video_limit)
@@ -143,7 +156,7 @@ class AsyncTikTokAPI(TikTokAPI):
         response, api_extras = await self._scrape_data(link, self._video_response_type)
         return self._extract_video_from_response(response, api_extras)
 
-    async def _scroll_page_down(self, page: Page, scroll_down_time: float):
+    async def _scroll_page_down(self, page: Page):
         await page.evaluate(
             """
             var intervalID = setInterval(function () {
@@ -153,25 +166,7 @@ class AsyncTikTokAPI(TikTokAPI):
 
             """
         )
-        # prev_height = None
-        # done = False
-        # its = 0
-        # while not done:
-        #     curr_height = await page.evaluate('(window.innerHeight + window.scrollY)')
-        #     if not prev_height:
-        #         prev_height = curr_height
-        #         await asyncio.sleep(2)
-        #     elif prev_height == curr_height:
-        #         done = True
-        #     else:
-        #         prev_height = curr_height
-        #         await asyncio.sleep(2)
-        #
-        #     its += 1
-        #     if its >= time:
-        #         done = True
-        await asyncio.sleep(scroll_down_time)
-
+        await page.wait_for_timeout(self.scroll_down_time * 1000)
         await page.evaluate("clearInterval(intervalID)")
 
 

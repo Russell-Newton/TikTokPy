@@ -3,12 +3,18 @@ Synchronous API for data scraping
 """
 
 import json
-import time
 import warnings
 from typing import List, Literal, Tuple, Type, TypeVar, Union
 
-import requests
-from playwright.sync_api import Page, Request, Route, TimeoutError, sync_playwright
+import playwright.sync_api
+from playwright.sync_api import (
+    APIRequestContext,
+    Page,
+    Request,
+    Route,
+    TimeoutError,
+    sync_playwright,
+)
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models.challenge import Challenge, challenge_link
@@ -78,12 +84,12 @@ class TikTokAPI:
         *,
         wait_until: Literal[
             "domcontentloaded", "load", "networkidle", "commit"
-        ] = "networkidle",
+        ] = "load",
         scroll_down_time: float = 0,
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
-        navigation_timeout: float = 30000,
+        navigation_timeout: float = 30,
         navigation_retries: int = 0,
         **context_kwargs,
     ):
@@ -113,7 +119,7 @@ class TikTokAPI:
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs
-        self.navigation_timeout = navigation_timeout
+        self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
 
     def __enter__(self) -> "TikTokAPI":
@@ -185,13 +191,13 @@ class TikTokAPI:
             return MobileVideoResponse
         return VideoResponse
 
-    def challenge(self, challenge_name: str, video_limit: int = 25) -> Challenge:
+    def challenge(self, challenge_name: str, video_limit: int = 0) -> Challenge:
         """
         Retrieve data on a :class:`.Challenge` (hashtag) from TikTok. Only up to the ``video_limit`` most recent videos
         will be retrievable by the scraper.
 
         :param challenge_name: The name of the challenge. e.g.: ``"fyp"``
-        :param video_limit: The max number of recent videos to retrieve
+        :param video_limit: The max number of recent videos to retrieve. Set to 0 for no limit
         :return: A :class:`.Challenge` object containing the scraped data
         :rtype: :class:`.Challenge`
         """
@@ -199,13 +205,13 @@ class TikTokAPI:
         response, api_extras = self._scrape_data(link, self._challenge_response_type)
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
-    def user(self, user: Union[int, str], video_limit: int = 25) -> User:
+    def user(self, user: Union[int, str], video_limit: int = 0) -> User:
         """
         Retrieve data on a :class:`.User` from TikTok. Only up to the ``video_limit`` most recent videos will be
         retrievable by the scraper.
 
         :param user: The unique user or id of the user. e.g.: for @tiktok, use ``"tiktok"``
-        :param video_limit: The max number of recent videos to retrieve
+        :param video_limit: The max number of recent videos to retrieve. Set to 0 for no limit
         :return: A :class:`.User` object containing the scraped data
         :rtype: :class:`.User`
         """
@@ -232,35 +238,45 @@ class TikTokAPI:
         extras_json: List[dict] = []
 
         def capture_api_extras(route: Route, request: Request):
-            r = requests.get(
-                request.url,
-                headers=request.headers,
-                cookies={
-                    cookie["name"]: cookie["value"] for cookie in self.context.cookies()
-                },
-            )
-            if len(r.content) > 2:
-                extras_json.append(json.loads(r.content.decode("utf-8")))
-                api_response = APIResponse.parse_raw(r.content)
+            request_context: APIRequestContext = self.context.request
+            try:
+                response: playwright.sync_api.APIResponse = request_context.get(
+                    request.url, headers=request.headers
+                )
+            except Exception:
+                route.abort()
+                return
+            body = response.body()
+            if len(body) > 2:
+                _data = response.json()
+                extras_json.append(_data)
+                api_response = APIResponse.parse_obj(_data)
                 api_extras.append(api_response)
-            route.continue_()
-
-        page = self.context.new_page()
-        page.route("**/api/challenge/item_list/*", capture_api_extras)
-        page.route("**/api/comment/list/*", capture_api_extras)
-        page.route("**/api/post/item_list/*", capture_api_extras)
+            route.fulfill(
+                status=response.status,
+                headers=response.headers,
+                body=body,
+                response=response,
+            )
 
         for _ in range(self.navigation_retries + 1):
+            self.context.clear_cookies()
+            page: Page = self.context.new_page()
+            page.route("**/api/challenge/item_list/*", capture_api_extras)
+            page.route("**/api/comment/list/*", capture_api_extras)
+            page.route("**/api/post/item_list/*", capture_api_extras)
             try:
                 page.goto(link, wait_until=self.wait_until)
 
                 if self.scroll_down_time > 0:
-                    self._scroll_page_down(page, self.scroll_down_time)
+                    self._scroll_page_down(page)
 
                 content = page.content()
+                page.close()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
             except (TimeoutError, ValidationError, IndexError):
+                page.close()
                 continue
             break
         else:
@@ -268,8 +284,6 @@ class TikTokAPI:
                 f"Data scraping unable to complete in {self.navigation_timeout / 1000}s "
                 f"(retries: {self.navigation_retries})"
             )
-
-        page.close()
 
         return data, api_extras
 
@@ -299,7 +313,7 @@ class TikTokAPI:
         self,
         response: Union[ChallengeResponse, MobileChallengeResponse],
         api_extras: List[APIResponse],
-        video_limit: int = 25,
+        video_limit: int = 0,
     ):
         if response.challenge_page.status_code:
             raise TikTokAPIError(
@@ -316,7 +330,7 @@ class TikTokAPI:
         self,
         response: Union[UserResponse, MobileUserResponse],
         api_extras: List[APIResponse],
-        video_limit: int = 25,
+        video_limit: int = 0,
     ):
         if response.user_page.status_code:
             raise TikTokAPIError(
@@ -383,34 +397,16 @@ class TikTokAPI:
 
         return video
 
-    def _scroll_page_down(self, page: Page, scroll_down_time: float):
+    def _scroll_page_down(self, page: Page):
         page.evaluate(
             """
             var intervalID = setInterval(function () {
                 var scrollingElement = (document.scrollingElement || document.body);
                 scrollingElement.scrollTop = scrollingElement.scrollHeight;
-            }, 200);
+            }, 500);
             """
         )
-        # prev_height = None
-        # done = False
-        # its = 0
-        # while not done:
-        #     curr_height = await page.evaluate('(window.innerHeight + window.scrollY)')
-        #     if not prev_height:
-        #         prev_height = curr_height
-        #         await asyncio.sleep(2)
-        #     elif prev_height == curr_height:
-        #         done = True
-        #     else:
-        #         prev_height = curr_height
-        #         await asyncio.sleep(2)
-        #
-        #     its += 1
-        #     if its >= time:
-        #         done = True
-        time.sleep(scroll_down_time)
-
+        page.wait_for_timeout(self.scroll_down_time * 1000)
         page.evaluate("clearInterval(intervalID)")
 
 

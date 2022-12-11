@@ -29,6 +29,7 @@ release = "0.1.2"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
+    "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_tabs.tabs",
     "sphinxcontrib.autodoc_pydantic",
