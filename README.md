@@ -1,17 +1,17 @@
 <h1 align="center">TikTokPy</h1>
 <div align="center">
     <a href="https://pypi.org/project/tiktokapipy/">
-        <img src="https://img.shields.io/pypi/v/tiktokapipy?style=flat-square&logo=pypi">
+        <img src="https://img.shields.io/pypi/v/tiktokapipy?style=flat-square&logo=pypi" alt="PyPI">
     </a>
     <a href="https://www.python.org">
-        <img src="https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square&logo=python">
+        <img src="https://img.shields.io/badge/python-3.8+-blue.svg?style=flat-square&logo=python" alt="Python Version 3.8+">
     </a>
     <a href="https://pypi.org/project/tiktokapipy/">
-        <img alt="GitHub" src="https://img.shields.io/github/license/Russell-Newton/TikTokPy?style=flat-square">
+        <img alt="License" src="https://img.shields.io/github/license/Russell-Newton/TikTokPy?style=flat-square">
     </a>
     <br>
     <a href="https://github.com/Russell-Newton/TikTokPy/actions/workflows/tox.yml">
-        <img src="https://img.shields.io/github/workflow/status/Russell-Newton/TikTokPy/Unit%20Tests?style=flat-square&logo=github">
+        <img src="https://img.shields.io/github/actions/workflow/status/Russell-Newton/TikTokPy/tox.yml?branch=main&label=Unit%20Tests&logo=github&style=flat-square" alt="Unit Tests Status">
     </a>
     <a href='https://tiktokpy.readthedocs.io/en/latest/?badge=latest'>
         <img src='https://readthedocs.org/projects/tiktokpy/badge/?version=latest&style=flat-square' alt='Documentation Status' />

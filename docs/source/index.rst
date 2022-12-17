@@ -54,6 +54,6 @@ Reference
     :height: 1.5em
 .. _PythonBadge: https://www.python.org
 
-.. |BuildBadge| image:: https://img.shields.io/github/workflow/status/Russell-Newton/TikTokPy/Unit%20Tests?style=flat-square&logo=github
+.. |BuildBadge| image:: https://img.shields.io/github/actions/workflow/status/Russell-Newton/TikTokPy/tox.yml?branch=main&label=Unit%20Tests&logo=github&style=flat-square
     :height: 1.5em
 .. _BuildBadge: https://github.com/Russell-Newton/TikTokPy/actions/workflows/tox.yml

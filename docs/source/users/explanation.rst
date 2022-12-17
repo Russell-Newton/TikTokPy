@@ -69,8 +69,8 @@ Data Collection
 
 By default, TikTokPy only grabs preloaded content and any API calls made during the page load. This is fairly limiting
 for the amount of data you can retrieve. In order to grab more data, additional API calls will be needed to be
-triggered. This can only be done by scrolling down on the page. Furthermore, scrolling down on the page can only be done
-in a headed browser, and scrolling down is determined by how long you want TikTokPy to scroll down for:
+triggered. This can only be done by scrolling down on the page. The amount to scroll down by is determined by how long
+you want TikTokPy to scroll down for:
 
 .. tabs::
 
@@ -95,8 +95,6 @@ in a headed browser, and scrolling down is determined by how long you want TikTo
                     challenge = await api.challenge(tag_name)
                     async for video in challenge.videos:
                         ...
-
-Setting a ``scroll_down_time`` automatically makes browsing headed.
 
 .. warning::
     This will not work with mobile emulation. In order to take advantage of slideshow scraping alongside additional

@@ -16,14 +16,17 @@ class ChallengeStats(CamelCaseModel):
     view_count: int
 
 
-class Challenge(CamelCaseModel):
+class LightChallenge(CamelCaseModel):
+    title: str
+
+
+class Challenge(LightChallenge):
     """Challenge data"""
 
     id: int
     """The Challenge's unique id"""
-    title: str
     desc: str
-    is_commerce: bool
+    is_commerce: Optional[bool]
     """Presumably whether this challenge is sponsored."""
     stats: ChallengeStats
 

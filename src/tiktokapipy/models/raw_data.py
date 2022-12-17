@@ -120,6 +120,15 @@ class VideoResponse(PrimaryResponseType):
     comment_item: Optional[Dict[int, Comment]]
     video_page: StatusPage
 
+    # Preprocess to insert id if needed
+    @classmethod
+    def parse_obj(cls, obj):
+        if "ItemModule" in obj:
+            for key in obj["ItemModule"]:
+                obj["ItemModule"][key]["id"] = key
+                obj["ItemModule"][key]["video"]["id"] = key
+        return super().parse_obj(obj)
+
 
 class MobileVideoData(StatusPage):
     """:autodoc-skip:"""

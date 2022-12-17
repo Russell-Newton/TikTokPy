@@ -3,8 +3,10 @@ Synchronous API for data scraping
 """
 
 import json
+import traceback
 import warnings
-from typing import List, Literal, Tuple, Type, TypeVar, Union
+from abc import ABC, abstractmethod
+from typing import Generic, List, Literal, Tuple, Type, TypeVar, Union
 
 import playwright.sync_api
 from playwright.sync_api import (
@@ -17,7 +19,8 @@ from playwright.sync_api import (
 )
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
-from tiktokapipy.models.challenge import Challenge, challenge_link
+from tiktokapipy.models import TikTokDataModel
+from tiktokapipy.models.challenge import Challenge, LightChallenge, challenge_link
 from tiktokapipy.models.raw_data import (
     APIResponse,
     ChallengeResponse,
@@ -32,33 +35,66 @@ from tiktokapipy.models.raw_data import (
 from tiktokapipy.models.user import LightUser, User, user_link
 from tiktokapipy.models.video import LightVideo, Video, video_link
 
-DataModelT = TypeVar("DataModelT", bound=PrimaryResponseType)
+_DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType)
+"""
+Generic used for data scraping.
+"""
+_LightIterInT = TypeVar("_LightIterInT", bound=TikTokDataModel)
+"""
+Generic used as LightIter input type.
+"""
+_LightIterOutT = TypeVar("_LightIterOutT", bound=TikTokDataModel)
+"""
+Generic used as LightIter output type.
+"""
 
 
-class LightVideosIter:
+class LightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
+    """
+    Utility class to lazy-load data models retrieved under a :class:`.Challenge`, :class:`.Video`, or :class:`.User`
+    so they aren't all loaded at once.
+    :autodoc-skip:
+    """
+
+    def __init__(self, light_models: List[_LightIterInT], api: "TikTokAPI"):
+        self._light_models = light_models
+        self._api = api
+
+    @abstractmethod
+    def fetch(self) -> _LightIterOutT:
+        raise NotImplementedError
+
+    def __iter__(self):
+        self.next_up = 0
+        return self
+
+    def __next__(self):
+        if self.next_up == len(self._light_models):
+            raise StopIteration
+        out = self.fetch()
+        self.next_up += 1
+        return out
+
+
+class LightVideoIter(LightIter[LightVideo, Video]):
     """
     Utility class to lazy-load videos retrieved under a :class:`.Challenge` or :class:`.User` so they aren't all
     loaded at once.
     :autodoc-skip:
     """
 
-    def __init__(self, videos: List[LightVideo], api: "TikTokAPI"):
-        self._videos = videos
-        self._api = api
+    def fetch(self) -> Video:
+        return self._api.video(video_link(self._light_models[self.next_up].id))
 
-    def fetch_video(self) -> Video:
-        video = self._api.video(video_link(self._videos[self.next_up].id))
-        self.next_up += 1
-        return video
 
-    def __iter__(self) -> "LightVideosIter":
-        self.next_up = 0
-        return self
+class LightChallengeIter(LightIter[LightChallenge, Challenge]):
+    """
+    Utility class to lazy-load challenges retrieved under a :class:`.Video` loaded at once.
+    :autodoc-skip:
+    """
 
-    def __next__(self) -> Video:
-        if self.next_up == len(self._videos):
-            raise StopIteration
-        return self.fetch_video()
+    def fetch(self) -> Challenge:
+        return self._api.challenge(self._light_models[self.next_up].title)
 
 
 class LightUserGetter:
@@ -96,9 +132,8 @@ class TikTokAPI:
         """
         :param wait_until: When navigating to a page, when should navigation be considered done?
         :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
-            load more content from the page. Incompatible with ``headless=True``. Set to 0 to not scroll down.
-        :param headless: Whether to use headless browsing. Headless browsing is incompatible with non-zero
-            ``scroll_down_time``. Set to ``None`` to have this be determined by ``scroll_down_time``.
+            load more content from the page.
+        :param headless: Whether to use headless browsing.
         :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
             specify the name of the dump file (exluding '.json').
         :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
@@ -109,14 +144,9 @@ class TikTokAPI:
             not retry navigation.
         :param context_kwargs: Any extra kwargs used to initialize the playwright browser context.
         """
-        if scroll_down_time > 0 and headless:
-            raise ValueError("Cannot scroll down with a headless browser")
         self.wait_until = wait_until
         self.scroll_down_time = scroll_down_time
-        if headless is None:
-            self.headless = scroll_down_time == 0
-        else:
-            self.headless = headless
+        self.headless = headless
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs
@@ -136,8 +166,7 @@ class TikTokAPI:
             context_kwargs.update(self.playwright.devices["Desktop Edge"])
 
         self._context = self.browser.new_context(**context_kwargs)
-        if self.navigation_timeout > 0:
-            self.context.set_default_navigation_timeout(self.navigation_timeout)
+        self.context.set_default_navigation_timeout(self.navigation_timeout)
 
         return self
 
@@ -169,7 +198,11 @@ class TikTokAPI:
 
     @property
     def _light_videos_iter_type(self):
-        return LightVideosIter
+        return LightVideoIter
+
+    @property
+    def _light_challenge_iter_type(self):
+        return LightChallengeIter
 
     @property
     def _light_user_getter_type(self):
@@ -234,8 +267,8 @@ class TikTokAPI:
         return self._extract_video_from_response(response, api_extras)
 
     def _scrape_data(
-        self, link: str, data_model: Type[DataModelT]
-    ) -> Tuple[DataModelT, List[APIResponse]]:
+        self, link: str, data_model: Type[_DataModelT]
+    ) -> Tuple[_DataModelT, List[APIResponse]]:
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
@@ -277,7 +310,8 @@ class TikTokAPI:
                 page.close()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
-            except (TimeoutError, ValidationError, IndexError):
+            except (TimeoutError, ValidationError, IndexError) as e:
+                traceback.print_exception(type(e), e, e.__traceback__)
                 page.close()
                 continue
             break
@@ -290,7 +324,7 @@ class TikTokAPI:
         return data, api_extras
 
     def _extract_and_dump_data(
-        self, page_content: str, extras_json: List[dict], data_model: Type[DataModelT]
+        self, page_content: str, extras_json: List[dict], data_model: Type[_DataModelT]
     ):
         data = page_content.split('<script id="SIGI_STATE" type="application/json">')[
             1
@@ -324,7 +358,7 @@ class TikTokAPI:
         challenge = response.challenge_page.challenge_info.challenge
         stats = response.challenge_page.challenge_info.stats
         challenge.stats = stats
-        challenge.videos = self._create_videos_iter(response, api_extras, video_limit)
+        challenge.videos = self._create_video_iter(response, api_extras, video_limit)
 
         return challenge
 
@@ -340,11 +374,11 @@ class TikTokAPI:
             )
         name, user = list(response.user_module.users.items())[0]
         user.stats = response.user_module.stats[name]
-        user.videos = self._create_videos_iter(response, api_extras, video_limit)
+        user.videos = self._create_video_iter(response, api_extras, video_limit)
 
         return user
 
-    def _create_videos_iter(
+    def _create_video_iter(
         self,
         response: Union[ChallengeResponse, UserResponse],
         api_extras: List[APIResponse],
@@ -397,7 +431,14 @@ class TikTokAPI:
         else:
             video.creator = self._light_user_getter_type(video.author, self)
 
+        video.tags = self._create_challenge_iter(video)
+
         return video
+
+    def _create_challenge_iter(self, video: Video):
+        if not video.challenges:
+            return self._light_challenge_iter_type([], self)
+        return self._light_challenge_iter_type(video.challenges, self)
 
     def _scroll_page_down(self, page: Page):
         page.evaluate(

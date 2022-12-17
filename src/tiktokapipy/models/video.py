@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Awaitable, Callable, List, Optional, Union
+from typing import Awaitable, Callable, Iterable, List, Optional, Union
 
 from pydantic import Field
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
@@ -69,7 +69,7 @@ class MusicData(CamelCaseModel):
     author_name: str
     duration: int
     original: bool
-    album: str
+    album: Optional[str]
 
     cover_large: str
     cover_medium: str
@@ -122,8 +122,11 @@ class Video(LightVideo):
     """Stats about the video"""
     diversification_labels: Optional[List[str]]
     """Tags/Categories applied to the video"""
-    challenges: Optional[List[Challenge]]
-    """:class:`.Challenge`s applied to the video"""
+    challenges: Optional[List[LightChallenge]]
+    """
+    We don't want to grab anything more than the title so we can generate the lazy challenge getter.
+    :autodoc-skip:
+    """
     video: VideoData
     music: MusicData
     # digged: bool
@@ -188,9 +191,11 @@ class Video(LightVideo):
     """Set on return from API. Contains all :class:`.Comment`s gathered during scraping."""
     creator: Optional[Callable[[], Union[User, Awaitable[User]]]]
     """Set on return from API. Call to retrieve data on the :class:`.User` that created the video."""
+    tags: Optional[Iterable[Challenge]]
+    """Set on return from API. Iterate over to retrieve data on the :class:`.Challenge`s applied to the video."""
 
 
-from tiktokapipy.models.challenge import Challenge  # noqa E402
+from tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
 from tiktokapipy.models.comment import Comment  # noqa E402
 from tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
 

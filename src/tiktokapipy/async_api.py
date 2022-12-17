@@ -1,8 +1,9 @@
 """
 Asynchronous API for data scraping
 """
-
-from typing import List, Tuple, Type
+import traceback
+from abc import ABC, abstractmethod
+from typing import Generic, List, Tuple, Type
 
 import playwright.async_api
 from playwright.async_api import (
@@ -15,29 +16,65 @@ from playwright.async_api import (
 )
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
-from tiktokapipy.api import DataModelT, LightUserGetter, LightVideosIter, TikTokAPI
-from tiktokapipy.models.challenge import Challenge, challenge_link
+from tiktokapipy.api import (
+    LightUserGetter,
+    TikTokAPI,
+    _DataModelT,
+    _LightIterInT,
+    _LightIterOutT,
+)
+from tiktokapipy.models.challenge import Challenge, LightChallenge, challenge_link
 from tiktokapipy.models.raw_data import APIResponse
 from tiktokapipy.models.user import User, user_link
-from tiktokapipy.models.video import Video, video_link
+from tiktokapipy.models.video import LightVideo, Video, video_link
 
 
-class AsyncLightVideoIter(LightVideosIter):
-    """:autodoc-skip:"""
+class AsyncLightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
+    """
+    Utility class to lazy-load data models retrieved under a :class:`.Challenge`, :class:`.Video`, or :class:`.User`
+    so they aren't all loaded at once.
+    :autodoc-skip:
+    """
 
-    async def fetch_video(self) -> Video:
-        video = await self._api.video(video_link(self._videos[self.next_up].id))
-        self.next_up += 1
-        return video
+    def __init__(self, light_models: List[_LightIterInT], api: "AsyncTikTokAPI"):
+        self._light_models = light_models
+        self._api = api
 
-    def __aiter__(self) -> "LightVideosIter":
+    @abstractmethod
+    async def fetch(self) -> _LightIterOutT:
+        raise NotImplementedError
+
+    def __aiter__(self):
         self.next_up = 0
         return self
 
-    async def __anext__(self) -> Video:
-        if self.next_up == len(self._videos):
+    async def __anext__(self):
+        if self.next_up == len(self._light_models):
             raise StopAsyncIteration
-        return await self.fetch_video()
+        out = await self.fetch()
+        self.next_up += 1
+        return out
+
+
+class AsyncLightVideoIter(AsyncLightIter[LightVideo, Video]):
+    """
+    Utility class to lazy-load videos retrieved under a :class:`.Challenge` or :class:`.User` so they aren't all
+    loaded at once.
+    :autodoc-skip:
+    """
+
+    async def fetch(self) -> Video:
+        return await self._api.video(video_link(self._light_models[self.next_up].id))
+
+
+class AsyncLightChallengeIter(AsyncLightIter[LightChallenge, Challenge]):
+    """
+    Utility class to lazy-load challenges retrieved under a :class:`.Video` loaded at once.
+    :autodoc-skip:
+    """
+
+    async def fetch(self) -> Challenge:
+        return await self._api.challenge(self._light_models[self.next_up].title)
 
 
 class AsyncLightUserGetter(LightUserGetter):
@@ -66,8 +103,7 @@ class AsyncTikTokAPI(TikTokAPI):
             context_kwargs.update(self.playwright.devices["Desktop Edge"])
 
         self._context = await self.browser.new_context(**context_kwargs)
-        if self.navigation_timeout > 0:
-            self.context.set_default_navigation_timeout(self.navigation_timeout)
+        self.context.set_default_navigation_timeout(self.navigation_timeout)
 
         return self
 
@@ -81,12 +117,16 @@ class AsyncTikTokAPI(TikTokAPI):
         return AsyncLightVideoIter
 
     @property
+    def _light_challenge_iter_type(self):
+        return AsyncLightChallengeIter
+
+    @property
     def _light_user_getter_type(self):
         return AsyncLightUserGetter
 
     async def _scrape_data(
-        self, link: str, data_model: Type[DataModelT]
-    ) -> Tuple[DataModelT, List[APIResponse]]:
+        self, link: str, data_model: Type[_DataModelT]
+    ) -> Tuple[_DataModelT, List[APIResponse]]:
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
@@ -129,7 +169,8 @@ class AsyncTikTokAPI(TikTokAPI):
                 await page.close()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
-            except (TimeoutError, ValidationError, IndexError):
+            except (TimeoutError, ValidationError, IndexError) as e:
+                traceback.print_exception(type(e), e, e.__traceback__)
                 await page.close()
                 continue
             break
