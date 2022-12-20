@@ -6,7 +6,7 @@ import json
 import traceback
 import warnings
 from abc import ABC, abstractmethod
-from typing import Generic, List, Literal, Tuple, Type, TypeVar, Union
+from typing import Generic, List, Tuple, Type, TypeVar, Union
 
 import playwright.sync_api
 from playwright.sync_api import (
@@ -118,19 +118,15 @@ class TikTokAPI:
     def __init__(
         self,
         *,
-        wait_until: Literal[
-            "domcontentloaded", "load", "networkidle", "commit"
-        ] = "load",
         scroll_down_time: float = 0,
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
-        navigation_timeout: float = 0,
+        navigation_timeout: float = 30,
         navigation_retries: int = 0,
         **context_kwargs,
     ):
         """
-        :param wait_until: When navigating to a page, when should navigation be considered done?
         :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
             load more content from the page.
         :param headless: Whether to use headless browsing.
@@ -144,7 +140,6 @@ class TikTokAPI:
             not retry navigation.
         :param context_kwargs: Any extra kwargs used to initialize the playwright browser context.
         """
-        self.wait_until = wait_until
         self.scroll_down_time = scroll_down_time
         self.headless = headless
         self.data_dump_file = data_dump_file
@@ -301,7 +296,8 @@ class TikTokAPI:
             page.route("**/api/comment/list/*", capture_api_extras)
             page.route("**/api/post/item_list/*", capture_api_extras)
             try:
-                page.goto(link, wait_until=self.wait_until)
+                page.goto(link)
+                page.wait_for_selector("#SIGI_STATE", state="attached")
 
                 if self.scroll_down_time > 0:
                     self._scroll_page_down(page)

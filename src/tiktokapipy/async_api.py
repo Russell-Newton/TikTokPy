@@ -160,7 +160,8 @@ class AsyncTikTokAPI(TikTokAPI):
             await page.route("**/api/comment/list/*", capture_api_extras)
             await page.route("**/api/post/item_list/*", capture_api_extras)
             try:
-                await page.goto(link, wait_until=self.wait_until)
+                await page.goto(link)
+                await page.wait_for_selector("#SIGI_STATE", state="attached")
 
                 if self.scroll_down_time > 0:
                     await self._scroll_page_down(page)
