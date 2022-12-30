@@ -25,3 +25,23 @@ def test_challenge_sync(request, api, challenge_name):
     assert challenge.videos
     for video in challenge.videos:
         assert video
+
+
+def test_sort_challenge_videos(sync_api, challenge_name):
+    challenge = sync_api.challenge(challenge_name)
+    most_recent = -1
+    for video in challenge.videos.sorted_by(
+        lambda vid: vid.stats.play_count
+    )._light_models:
+        assert video.stats.play_count > most_recent
+        most_recent = video.stats.play_count
+
+
+async def test_sort_challenge_videos_async(async_api, challenge_name):
+    challenge = await async_api.challenge(challenge_name)
+    most_recent = -1
+    for video in challenge.videos.sorted_by(
+        lambda vid: vid.stats.play_count
+    )._light_models:
+        assert video.stats.play_count > most_recent
+        most_recent = video.stats.play_count

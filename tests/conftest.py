@@ -1,6 +1,6 @@
 import pytest
-from tiktokapipy.api import TikTokAPI as SyncTikTokAPI
-from tiktokapipy.async_api import AsyncTikTokAPI as AsyncTikTokAPI
+from tiktokapipy.api import TikTokAPI
+from tiktokapipy.async_api import AsyncTikTokAPI
 
 
 @pytest.fixture(scope="session")
@@ -19,7 +19,9 @@ def headless_browsing():
 
 
 @pytest.fixture(scope="function")
-async def async_api(navigation_timeout, navigation_retries, headless_browsing):
+async def async_api(
+    navigation_timeout, navigation_retries, headless_browsing
+) -> AsyncTikTokAPI:
     async with AsyncTikTokAPI(
         navigation_timeout=navigation_timeout,
         navigation_retries=navigation_retries,
@@ -29,8 +31,8 @@ async def async_api(navigation_timeout, navigation_retries, headless_browsing):
 
 
 @pytest.fixture(scope="function")
-def sync_api(navigation_timeout, navigation_retries, headless_browsing):
-    with SyncTikTokAPI(
+def sync_api(navigation_timeout, navigation_retries, headless_browsing) -> TikTokAPI:
+    with TikTokAPI(
         navigation_timeout=navigation_timeout,
         navigation_retries=navigation_retries,
         headless=headless_browsing,
@@ -39,7 +41,9 @@ def sync_api(navigation_timeout, navigation_retries, headless_browsing):
 
 
 @pytest.fixture(scope="function")
-async def async_api_mobile(navigation_timeout, navigation_retries, headless_browsing):
+async def async_api_mobile(
+    navigation_timeout, navigation_retries, headless_browsing
+) -> AsyncTikTokAPI:
     async with AsyncTikTokAPI(
         emulate_mobile=True,
         navigation_timeout=navigation_timeout,
@@ -50,8 +54,10 @@ async def async_api_mobile(navigation_timeout, navigation_retries, headless_brow
 
 
 @pytest.fixture(scope="function")
-def sync_api_mobile(navigation_timeout, navigation_retries, headless_browsing):
-    with SyncTikTokAPI(
+def sync_api_mobile(
+    navigation_timeout, navigation_retries, headless_browsing
+) -> TikTokAPI:
+    with TikTokAPI(
         emulate_mobile=True,
         navigation_timeout=navigation_timeout,
         navigation_retries=navigation_retries,

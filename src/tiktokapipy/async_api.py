@@ -1,9 +1,15 @@
 """
 Asynchronous API for data scraping
 """
+
+from __future__ import annotations
+
 import traceback
 from abc import ABC, abstractmethod
-from typing import Generic, List, Tuple, Type
+from typing import TYPE_CHECKING, Callable, Generic, List, Tuple, Type
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsLessThan
 
 import playwright.async_api
 from playwright.async_api import (
@@ -23,6 +29,7 @@ from tiktokapipy.api import (
     _LightIterInT,
     _LightIterOutT,
 )
+from tiktokapipy.models import AsyncDeferredIterator
 from tiktokapipy.models.challenge import Challenge, LightChallenge, challenge_link
 from tiktokapipy.models.raw_data import APIResponse
 from tiktokapipy.models.user import User, user_link
@@ -36,23 +43,30 @@ class AsyncLightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
     :autodoc-skip:
     """
 
-    def __init__(self, light_models: List[_LightIterInT], api: "AsyncTikTokAPI"):
+    def __init__(self, light_models: List[_LightIterInT], api: AsyncTikTokAPI):
         self._light_models = light_models
         self._api = api
 
     @abstractmethod
-    async def fetch(self) -> _LightIterOutT:
-        raise NotImplementedError
+    async def fetch(self, idx: int) -> _LightIterOutT:
+        ...
 
-    def __aiter__(self):
-        self.next_up = 0
+    def sorted_by(
+        self, key: Callable[[_LightIterInT], SupportsLessThan], reverse: bool = False
+    ) -> AsyncLightIter[_LightIterInT, _LightIterOutT]:
+        return self.__class__(
+            sorted(self._light_models, key=key, reverse=reverse), self._api
+        )
+
+    def __aiter__(self) -> AsyncLightIter[_LightIterInT, _LightIterOutT]:
+        self._next_up = 0
         return self
 
-    async def __anext__(self):
-        if self.next_up == len(self._light_models):
+    async def __anext__(self) -> _LightIterOutT:
+        if self._next_up == len(self._light_models):
             raise StopAsyncIteration
-        out = await self.fetch()
-        self.next_up += 1
+        out = await self.fetch(self._next_up)
+        self._next_up += 1
         return out
 
 
@@ -63,8 +77,8 @@ class AsyncLightVideoIter(AsyncLightIter[LightVideo, Video]):
     :autodoc-skip:
     """
 
-    async def fetch(self) -> Video:
-        return await self._api.video(video_link(self._light_models[self.next_up].id))
+    async def fetch(self, idx: int) -> Video:
+        return await self._api.video(video_link(self._light_models[idx].id))
 
 
 class AsyncLightChallengeIter(AsyncLightIter[LightChallenge, Challenge]):
@@ -73,8 +87,8 @@ class AsyncLightChallengeIter(AsyncLightIter[LightChallenge, Challenge]):
     :autodoc-skip:
     """
 
-    async def fetch(self) -> Challenge:
-        return await self._api.challenge(self._light_models[self.next_up].title)
+    async def fetch(self, idx: int) -> Challenge:
+        return await self._api.challenge(self._light_models[idx].title)
 
 
 class AsyncLightUserGetter(LightUserGetter):
@@ -90,7 +104,7 @@ class AsyncTikTokAPI(TikTokAPI):
     def __enter__(self):
         raise TikTokAPIError("Must use async context manager with AsyncTikTokAPI")
 
-    async def __aenter__(self) -> "AsyncTikTokAPI":
+    async def __aenter__(self) -> AsyncTikTokAPI:
         self._playwright = await async_playwright().start()
 
         self._browser = await self.playwright.chromium.launch(headless=self.headless)
@@ -113,11 +127,11 @@ class AsyncTikTokAPI(TikTokAPI):
         await self.playwright.stop()
 
     @property
-    def _light_videos_iter_type(self):
+    def _light_videos_iter_type(self) -> Type[AsyncDeferredIterator[Video]]:
         return AsyncLightVideoIter
 
     @property
-    def _light_challenge_iter_type(self):
+    def _light_challenge_iter_type(self) -> Type[AsyncDeferredIterator[Challenge]]:
         return AsyncLightChallengeIter
 
     @property

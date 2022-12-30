@@ -110,6 +110,9 @@ class LightVideo(CamelCaseModel):
 
     id: int
     """The unique video ID"""
+    # Have this here to sort the iteration.
+    stats: VideoStats
+    """Stats about the video"""
 
 
 class Video(LightVideo):
@@ -118,8 +121,6 @@ class Video(LightVideo):
     #####################
     desc: str
     """Video description"""
-    stats: VideoStats
-    """Stats about the video"""
     diversification_labels: Optional[List[str]]
     """Tags/Categories applied to the video"""
     challenges: Optional[List[LightChallenge]]
