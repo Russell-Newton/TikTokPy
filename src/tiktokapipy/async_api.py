@@ -12,14 +12,7 @@ if TYPE_CHECKING:
     from _typeshed import SupportsLessThan
 
 import playwright.async_api
-from playwright.async_api import (
-    APIRequestContext,
-    Page,
-    Request,
-    Route,
-    TimeoutError,
-    async_playwright,
-)
+from playwright.async_api import Page, Route, TimeoutError, async_playwright
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.api import (
@@ -144,31 +137,23 @@ class AsyncTikTokAPI(TikTokAPI):
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
-        async def capture_api_extras(route: Route, request: Request):
-            request_context: APIRequestContext = self.context.request
+        async def capture_api_extras(route: Route):
             try:
-                response: playwright.async_api.APIResponse = await request_context.get(
-                    request.url,
-                    headers=request.headers,
-                )
-            except Exception:
-                await route.abort()
+                response = await route.fetch()
+            except playwright.async_api.Error:
                 return
-            body = await response.body()
-            if len(body) > 2:
-                _data = await response.json()
-                extras_json.append(_data)
-                api_response = APIResponse.parse_obj(_data)
-                api_extras.append(api_response)
+
+            _data = await response.json()
+            extras_json.append(_data)
+            api_response = APIResponse.parse_obj(_data)
+            api_extras.append(api_response)
             await route.fulfill(
-                status=response.status,
-                headers=response.headers,
-                body=body,
                 response=response,
+                json=_data,
             )
 
         for _ in range(self.navigation_retries + 1):
-            self.context.clear_cookies()
+            await self.context.clear_cookies()
             page: Page = await self._context.new_page()
             await page.route("**/api/challenge/item_list/*", capture_api_extras)
             await page.route("**/api/comment/list/*", capture_api_extras)

@@ -24,14 +24,7 @@ if TYPE_CHECKING:
     from _typeshed import SupportsLessThan
 
 import playwright.sync_api
-from playwright.sync_api import (
-    APIRequestContext,
-    Page,
-    Request,
-    Route,
-    TimeoutError,
-    sync_playwright,
-)
+from playwright.sync_api import Page, Route, TimeoutError, sync_playwright
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import DeferredIterator, TikTokDataModel
@@ -289,26 +282,19 @@ class TikTokAPI:
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
-        def capture_api_extras(route: Route, request: Request):
-            request_context: APIRequestContext = self.context.request
+        def capture_api_extras(route: Route):
             try:
-                response: playwright.sync_api.APIResponse = request_context.get(
-                    request.url, headers=request.headers
-                )
-            except Exception:
-                route.abort()
+                response = route.fetch()
+            except playwright.sync_api.Error:
                 return
-            body = response.body()
-            if len(body) > 2:
-                _data = response.json()
-                extras_json.append(_data)
-                api_response = APIResponse.parse_obj(_data)
-                api_extras.append(api_response)
+
+            _data = response.json()
+            extras_json.append(_data)
+            api_response = APIResponse.parse_obj(_data)
+            api_extras.append(api_response)
             route.fulfill(
-                status=response.status,
-                headers=response.headers,
-                body=body,
                 response=response,
+                json=_data,
             )
 
         for _ in range(self.navigation_retries + 1):
