@@ -116,6 +116,41 @@ Given a :ref:`User` object, you can retrieve that creator's most recent videos.
     user page will be used for video data scraping. Specifying a limit can be useful if you only want the most
     recent videos.
 
+Iterate Over Sorted User Videos
+-------------------------------
+
+Unfortunately, this strategy is not perfect. TikTok does not provide a direct way to sort videos, so you will only be
+able to perform the sorting on videos that are picked up by TikTokPy during scraping. More can be retrieved by setting
+``scroll_down_time`` to something like 10 seconds in the API constructor. The ``videos`` (async) iterator that exists on
+:ref:`User` and :ref:`Challenge` objects contains a function called ``sorted_by()`` that has the same signature as the
+builtin ``sorted()`` but is faster if you want to sort on :ref:`VideoStats`.
+
+.. tabs::
+
+    .. code-tab:: py TikTokAPI
+
+            from tiktokapipy.api import TikTokAPI
+
+            def do_something():
+                with TikTokAPI() as api:
+                    user = api.user(user_tag)
+                    for video in user.videos.sorted_by(key=lambda vid: vid.stats.digg_count, reverse=True):
+                        ...
+
+    .. code-tab:: py AsyncTikTokAPI
+
+            from tiktokapipy.async_api import AsyncTikTokAPI
+
+            async def do_something():
+                async with AsyncTikTokAPI() as api:
+                    user = await api.user(user_tag)
+                    async for video in user.videos.sorted_by(key=lambda vid: vid.stats.digg_count, reverse=True):
+                        ...
+
+.. note::
+    All other video data besides the unique ID and stats are grabbed at iteration time, so if you would like to sort on
+    something else you should just go with ``sorted()``. This helps keep the memory footprint low.
+
 Iterate Over Recent Videos Tagged with a Challenge
 --------------------------------------------------
 
