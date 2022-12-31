@@ -2,9 +2,15 @@
 Pydantic models used to load and store TikTok data
 """
 
+from __future__ import annotations
+
 import json
+from abc import abstractmethod
 from re import sub
-from typing import Union
+from typing import TYPE_CHECKING, Callable, Protocol, TypeVar, Union, runtime_checkable
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsLessThan
 
 from pydantic import BaseModel
 from pydantic.main import ModelMetaclass
@@ -83,4 +89,70 @@ class TitleCaseModel(TikTokDataModel):
         json_loads = _load_with_id_alias
 
 
-__all__ = ["CamelCaseModel", "TikTokDataModel", "TitleCaseModel"]
+_DeferredIterInT = TypeVar("_DeferredIterInT", bound=TikTokDataModel, covariant=True)
+_DeferredIterOutT = TypeVar("_DeferredIterOutT", bound=TikTokDataModel, covariant=True)
+
+
+@runtime_checkable
+class DeferredIterator(Protocol[_DeferredIterInT, _DeferredIterOutT]):
+    """:autodoc-skip:"""
+
+    def __iter__(self) -> DeferredIterator[_DeferredIterInT, _DeferredIterOutT]:
+        ...
+
+    def __next__(self) -> _DeferredIterOutT:
+        ...
+
+    @abstractmethod
+    def fetch(self, idx: int) -> _DeferredIterOutT:
+        ...
+
+    def sorted_by(
+        self, key: Callable[[_DeferredIterInT], SupportsLessThan], reverse: bool = False
+    ) -> DeferredIterator[_DeferredIterInT, _DeferredIterOutT]:
+        ...
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        return v
+
+
+@runtime_checkable
+class AsyncDeferredIterator(Protocol[_DeferredIterInT, _DeferredIterOutT]):
+    """:autodoc-skip:"""
+
+    def __aiter__(self) -> DeferredIterator[_DeferredIterInT, _DeferredIterOutT]:
+        ...
+
+    async def __anext__(self) -> _DeferredIterOutT:
+        ...
+
+    @abstractmethod
+    async def fetch(self, idx: int) -> _DeferredIterOutT:
+        ...
+
+    def sorted_by(
+        self, key: Callable[[_DeferredIterInT], SupportsLessThan], reverse: bool = False
+    ) -> DeferredIterator[_DeferredIterInT, _DeferredIterOutT]:
+        ...
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        return v
+
+
+__all__ = [
+    "CamelCaseModel",
+    "TikTokDataModel",
+    "TitleCaseModel",
+    "DeferredIterator",
+    "AsyncDeferredIterator",
+]

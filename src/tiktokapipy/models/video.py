@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Awaitable, Callable, Iterable, List, Optional, Union
+from typing import Awaitable, Callable, List, Optional, Union
 
 from pydantic import Field
-from tiktokapipy.models import CamelCaseModel, TitleCaseModel
+from tiktokapipy.models import (
+    AsyncDeferredIterator,
+    CamelCaseModel,
+    DeferredIterator,
+    TitleCaseModel,
+)
 
 
 class VideoStats(CamelCaseModel):
@@ -110,6 +115,9 @@ class LightVideo(CamelCaseModel):
 
     id: int
     """The unique video ID"""
+    # Have this here to sort the iteration.
+    stats: VideoStats
+    """Stats about the video"""
 
 
 class Video(LightVideo):
@@ -118,8 +126,6 @@ class Video(LightVideo):
     #####################
     desc: str
     """Video description"""
-    stats: VideoStats
-    """Stats about the video"""
     diversification_labels: Optional[List[str]]
     """Tags/Categories applied to the video"""
     challenges: Optional[List[LightChallenge]]
@@ -191,7 +197,12 @@ class Video(LightVideo):
     """Set on return from API. Contains all :class:`.Comment`s gathered during scraping."""
     creator: Optional[Callable[[], Union[User, Awaitable[User]]]]
     """Set on return from API. Call to retrieve data on the :class:`.User` that created the video."""
-    tags: Optional[Iterable[Challenge]]
+    tags: Optional[
+        Union[
+            DeferredIterator[LightChallenge, Challenge],
+            AsyncDeferredIterator[LightChallenge, Challenge],
+        ]
+    ]
     """Set on return from API. Iterate over to retrieve data on the :class:`.Challenge`s applied to the video."""
 
 

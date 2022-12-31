@@ -2,24 +2,32 @@
 Synchronous API for data scraping
 """
 
+from __future__ import annotations
+
 import json
 import traceback
 import warnings
 from abc import ABC, abstractmethod
-from typing import Generic, List, Tuple, Type, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Generic,
+    Iterator,
+    List,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsLessThan
 
 import playwright.sync_api
-from playwright.sync_api import (
-    APIRequestContext,
-    Page,
-    Request,
-    Route,
-    TimeoutError,
-    sync_playwright,
-)
+from playwright.sync_api import Page, Route, TimeoutError, sync_playwright
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError
-from tiktokapipy.models import TikTokDataModel
+from tiktokapipy.models import DeferredIterator, TikTokDataModel
 from tiktokapipy.models.challenge import Challenge, LightChallenge, challenge_link
 from tiktokapipy.models.raw_data import (
     APIResponse,
@@ -35,44 +43,51 @@ from tiktokapipy.models.raw_data import (
 from tiktokapipy.models.user import LightUser, User, user_link
 from tiktokapipy.models.video import LightVideo, Video, video_link
 
-_DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType)
+_DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """
 Generic used for data scraping.
 """
-_LightIterInT = TypeVar("_LightIterInT", bound=TikTokDataModel)
+_LightIterInT = TypeVar("_LightIterInT", bound=TikTokDataModel, covariant=True)
 """
 Generic used as LightIter input type.
 """
-_LightIterOutT = TypeVar("_LightIterOutT", bound=TikTokDataModel)
+_LightIterOutT = TypeVar("_LightIterOutT", bound=TikTokDataModel, covariant=True)
 """
 Generic used as LightIter output type.
 """
 
 
-class LightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
+class LightIter(Generic[_LightIterInT, _LightIterOutT], Iterator[_LightIterOutT], ABC):
     """
     Utility class to lazy-load data models retrieved under a :class:`.Challenge`, :class:`.Video`, or :class:`.User`
     so they aren't all loaded at once.
     :autodoc-skip:
     """
 
-    def __init__(self, light_models: List[_LightIterInT], api: "TikTokAPI"):
+    def __init__(self, light_models: List[_LightIterInT], api: TikTokAPI):
         self._light_models = light_models
         self._api = api
 
     @abstractmethod
-    def fetch(self) -> _LightIterOutT:
-        raise NotImplementedError
+    def fetch(self, idx: int) -> _LightIterOutT:
+        ...
 
-    def __iter__(self):
-        self.next_up = 0
+    def sorted_by(
+        self, key: Callable[[_LightIterInT], SupportsLessThan], reverse: bool = False
+    ) -> LightIter[_LightIterInT, _LightIterOutT]:
+        return self.__class__(
+            sorted(self._light_models, key=key, reverse=reverse), self._api
+        )
+
+    def __iter__(self) -> LightIter[_LightIterInT, _LightIterOutT]:
+        self._next_up = 0
         return self
 
-    def __next__(self):
-        if self.next_up == len(self._light_models):
+    def __next__(self) -> _LightIterOutT:
+        if self._next_up == len(self._light_models):
             raise StopIteration
-        out = self.fetch()
-        self.next_up += 1
+        out = self.fetch(self._next_up)
+        self._next_up += 1
         return out
 
 
@@ -83,8 +98,8 @@ class LightVideoIter(LightIter[LightVideo, Video]):
     :autodoc-skip:
     """
 
-    def fetch(self) -> Video:
-        return self._api.video(video_link(self._light_models[self.next_up].id))
+    def fetch(self, idx: int) -> Video:
+        return self._api.video(video_link(self._light_models[idx].id))
 
 
 class LightChallengeIter(LightIter[LightChallenge, Challenge]):
@@ -93,8 +108,8 @@ class LightChallengeIter(LightIter[LightChallenge, Challenge]):
     :autodoc-skip:
     """
 
-    def fetch(self) -> Challenge:
-        return self._api.challenge(self._light_models[self.next_up].title)
+    def fetch(self, idx: int) -> Challenge:
+        return self._api.challenge(self._light_models[idx].title)
 
 
 class LightUserGetter:
@@ -104,7 +119,7 @@ class LightUserGetter:
     :autodoc-skip:
     """
 
-    def __init__(self, user: str, api: "TikTokAPI"):
+    def __init__(self, user: str, api: TikTokAPI):
         self._user = LightUser(unique_id=user)
         self._api = api
 
@@ -148,7 +163,7 @@ class TikTokAPI:
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
 
-    def __enter__(self) -> "TikTokAPI":
+    def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
 
         self._browser = self.playwright.chromium.launch(headless=self.headless)
@@ -192,11 +207,11 @@ class TikTokAPI:
         return self._context
 
     @property
-    def _light_videos_iter_type(self):
+    def _light_videos_iter_type(self) -> Type[DeferredIterator[Video]]:
         return LightVideoIter
 
     @property
-    def _light_challenge_iter_type(self):
+    def _light_challenge_iter_type(self) -> Type[DeferredIterator[Challenge]]:
         return LightChallengeIter
 
     @property
@@ -267,26 +282,19 @@ class TikTokAPI:
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
-        def capture_api_extras(route: Route, request: Request):
-            request_context: APIRequestContext = self.context.request
+        def capture_api_extras(route: Route):
             try:
-                response: playwright.sync_api.APIResponse = request_context.get(
-                    request.url, headers=request.headers
-                )
-            except Exception:
-                route.abort()
+                response = route.fetch()
+            except playwright.sync_api.Error:
                 return
-            body = response.body()
-            if len(body) > 2:
-                _data = response.json()
-                extras_json.append(_data)
-                api_response = APIResponse.parse_obj(_data)
-                api_extras.append(api_response)
+
+            _data = response.json()
+            extras_json.append(_data)
+            api_response = APIResponse.parse_obj(_data)
+            api_extras.append(api_response)
             route.fulfill(
-                status=response.status,
-                headers=response.headers,
-                body=body,
                 response=response,
+                json=_data,
             )
 
         for _ in range(self.navigation_retries + 1):
