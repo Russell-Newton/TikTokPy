@@ -4,6 +4,7 @@ Asynchronous API for data scraping
 
 from __future__ import annotations
 
+import json
 import traceback
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, Generic, List, Tuple, Type
@@ -143,7 +144,12 @@ class AsyncTikTokAPI(TikTokAPI):
             except playwright.async_api.Error:
                 return
 
-            _data = await response.json()
+            try:
+                _data = await response.json()
+            except json.JSONDecodeError:
+                await route.fulfill(response=response)
+                return
+
             extras_json.append(_data)
             api_response = APIResponse.parse_obj(_data)
             api_extras.append(api_response)

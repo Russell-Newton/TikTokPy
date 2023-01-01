@@ -288,7 +288,12 @@ class TikTokAPI:
             except playwright.sync_api.Error:
                 return
 
-            _data = response.json()
+            try:
+                _data = response.json()
+            except json.JSONDecodeError:
+                route.fulfill(response=response)
+                return
+
             extras_json.append(_data)
             api_response = APIResponse.parse_obj(_data)
             api_extras.append(api_response)
