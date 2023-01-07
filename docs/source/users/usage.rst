@@ -28,6 +28,11 @@ The TikTokPy API should be used as a context manager in your program:
                 async with AsyncTikTokAPI() as api:
                     ...
 
+Internally, the API uses a Playwright BrowserContext to scrape data from TikTok. The initialization of the
+BrowserContext and corresponding Browser can be controlled by arguments passed to :ref:`TikTokAPI` or
+:ref:`AsyncTikTokAPI`. This allows for use of a proxy, custom executable location, and more. See their documentation
+for more information.
+
 Examples
 ========
 
@@ -116,14 +121,14 @@ Given a :ref:`User` object, you can retrieve that creator's most recent videos.
     user page will be used for video data scraping. Specifying a limit can be useful if you only want the most
     recent videos.
 
-Iterate Over Sorted User Videos
--------------------------------
+Iterate Over Sorted Videos
+--------------------------
 
-Unfortunately, this strategy is not perfect. TikTok does not provide a direct way to sort videos, so you will only be
-able to perform the sorting on videos that are picked up by TikTokPy during scraping. More can be retrieved by setting
-``scroll_down_time`` to something like 10 seconds in the API constructor. The ``videos`` (async) iterator that exists on
-:ref:`User` and :ref:`Challenge` objects contains a function called ``sorted_by()`` that has the same signature as the
-builtin ``sorted()`` but is faster if you want to sort on :ref:`VideoStats`.
+Unfortunately, this strategy is not perfect. TikTok does not provide a direct way to sort :ref:`Video`, so you will
+only be able to perform the sorting on videos that are picked up by TikTokPy during scraping. More can be retrieved by
+setting ``scroll_down_time`` to something like 10 seconds in the API constructor. The ``videos`` (async) iterator that
+exists on :ref:`User` and :ref:`Challenge` objects contains a function called ``sorted_by()`` that has the same
+signature as the builtin ``sorted()`` but is faster if you want to sort on :ref:`VideoStats` or ``create_time``.
 
 .. tabs::
 
@@ -151,10 +156,10 @@ builtin ``sorted()`` but is faster if you want to sort on :ref:`VideoStats`.
     All other video data besides the unique ID and stats are grabbed at iteration time, so if you would like to sort on
     something else you should just go with ``sorted()``. This helps keep the memory footprint low.
 
-Iterate Over Recent Videos Tagged with a Challenge
---------------------------------------------------
+Iterate Over Popular Videos Tagged with a Challenge
+---------------------------------------------------
 
-TikTok refers to hashtags as "Challenges" internally. You can iterate over the most recent videos tagged with a specific
+TikTok refers to hashtags as "Challenges" internally. You can iterate over popular videos tagged with a specific
 :ref:`Challenge`.
 
 .. tabs::
@@ -178,6 +183,8 @@ TikTok refers to hashtags as "Challenges" internally. You can iterate over the m
                     challenge = await api.challenge(tag_name)
                     async for video in challenge.videos:
                         ...
+
+You can also sort these by create time with ``challenge.videos.sorted_by(lambda vid: vid.create_time)``.
 
 .. note::
     By default, the number of videos that can be iterated over is not limited. This can be changed by specifying a

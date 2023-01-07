@@ -82,7 +82,7 @@ autodoc_default_options = {
 autodoc_pydantic_model_show_config_summary = False
 autodoc_pydantic_field_show_alias = False
 
-typehints_defaults = "braces-after"
+typehints_defaults = "comma"
 
 
 def autodoc_skip_member(app, what, name, obj, skip, options):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Awaitable, Callable, List, Optional, Union
 
 from pydantic import Field
@@ -118,6 +119,7 @@ class LightVideo(CamelCaseModel):
     # Have this here to sort the iteration.
     stats: VideoStats
     """Stats about the video"""
+    create_time: datetime
 
 
 class Video(LightVideo):
@@ -183,7 +185,6 @@ class Video(LightVideo):
     #################################################
     # Misc fields (not sure what most of these are) #
     #################################################
-    # create_time: int
     # schedule_time: Optional[int]
     # take_down: Optional[int]
     # item_mute: bool

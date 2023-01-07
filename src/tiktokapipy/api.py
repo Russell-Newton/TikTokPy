@@ -139,7 +139,8 @@ class TikTokAPI:
         emulate_mobile: bool = False,
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
-        **context_kwargs,
+        context_kwargs: dict = None,
+        **kwargs,
     ):
         """
         :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
@@ -153,13 +154,17 @@ class TikTokAPI:
             disable the timeout.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
             not retry navigation.
-        :param context_kwargs: Any extra kwargs used to initialize the playwright browser context.
+        :param context_kwargs: Any extra kwargs used to initialize the playwright browser context. For full details,
+            see `Browser::new_context() <https://playwright.dev/python/docs/api/class-browser#browser-new-context>`_.
+        :param kwargs: Any extra kwargs used to initialize the playwright browser (e.g.: proxy, etc.).
+            For full details, see
+            `BrowserType::launch() <https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch>`_.
         """
         self.scroll_down_time = scroll_down_time
         self.headless = headless
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
-        self.context_kwargs = context_kwargs
+        self.context_kwargs = context_kwargs or {}
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
 
