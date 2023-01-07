@@ -13,8 +13,8 @@
     <a href="https://github.com/Russell-Newton/TikTokPy/actions/workflows/tox.yml">
         <img src="https://img.shields.io/github/actions/workflow/status/Russell-Newton/TikTokPy/tox.yml?branch=main&label=Unit%20Tests&logo=github&style=flat-square" alt="Unit Tests Status">
     </a>
-    <a href='https://tiktokpy.readthedocs.io/en/latest/?badge=latest'>
-        <img src='https://readthedocs.org/projects/tiktokpy/badge/?version=latest&style=flat-square' alt='Documentation Status' />
+    <a href='https://tiktokpy.readthedocs.io/en/stable/'>
+        <img src='https://readthedocs.org/projects/tiktokpy/badge/?version=stable&style=flat-square' alt='Documentation Status' />
     </a>
 </div>
 
