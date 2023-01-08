@@ -250,7 +250,7 @@ class AsyncTikTokAPI(TikTokAPI):
                 min_cursor = response.min_cursor
 
             return self._light_user_list_iter(out_list)
-        except (playwright.sync_api.Error, json.JSONDecodeError, TikTokAPIError) as e:
+        except (playwright.async_api.Error, json.JSONDecodeError, TikTokAPIError) as e:
             warnings.warn(f"Was unable to grab user list from scene {scene}:\n{e}")
             return None
 
