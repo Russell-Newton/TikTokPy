@@ -9,7 +9,7 @@ from typing import Dict, Generic, List, Optional, TypeVar, Union
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.models.challenge import Challenge, ChallengeStats
 from tiktokapipy.models.comment import Comment
-from tiktokapipy.models.user import User, UserStats
+from tiktokapipy.models.user import LightUser, User, UserStats
 from tiktokapipy.models.video import LightVideo, Video
 
 
@@ -18,6 +18,10 @@ class UserModule(CamelCaseModel):
 
     users: Dict[str, User]
     stats: Dict[str, UserStats]
+
+
+class UserListItem(CamelCaseModel):
+    user: LightUser
 
 
 class ChallengeInfo(CamelCaseModel):
@@ -44,11 +48,14 @@ class APIResponse(CamelCaseModel):
 
     status_code: int = 0
     cursor: Optional[int]
-    has_more: Union[bool, int]
+    has_more: Optional[Union[bool, int]]
+    min_cursor: Optional[int]
+    max_cursor: Optional[int]
 
     total: Optional[int]
     comments: Optional[List[Comment]]
     item_list: Optional[List[LightVideo]]
+    user_list: Optional[List[UserListItem]]
 
 
 class PrimaryResponseType(TitleCaseModel):

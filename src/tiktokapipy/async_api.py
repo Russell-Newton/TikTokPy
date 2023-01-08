@@ -6,8 +6,9 @@ from __future__ import annotations
 
 import json
 import traceback
+import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, Generic, List, Tuple, Type
+from typing import TYPE_CHECKING, Callable, Generic, List, Optional, Tuple, Type
 
 if TYPE_CHECKING:
     from _typeshed import SupportsLessThan
@@ -26,7 +27,7 @@ from tiktokapipy.api import (
 from tiktokapipy.models import AsyncDeferredIterator
 from tiktokapipy.models.challenge import Challenge, LightChallenge, challenge_link
 from tiktokapipy.models.raw_data import APIResponse
-from tiktokapipy.models.user import User, user_link
+from tiktokapipy.models.user import LightUser, User, user_link
 from tiktokapipy.models.video import LightVideo, Video, video_link
 
 
@@ -75,6 +76,17 @@ class AsyncLightVideoIter(AsyncLightIter[LightVideo, Video]):
         return await self._api.video(video_link(self._light_models[idx].id))
 
 
+class AsyncLightUserIter(AsyncLightIter[LightUser, User]):
+    """
+    Utility class to lazy-load users retrieved as a class:`.User`'s follower/following list so they aren't all
+    loaded at once.
+    :autodoc-skip:
+    """
+
+    async def fetch(self, idx: int) -> User:
+        return await self._api.user(self._light_models[idx].unique_id)
+
+
 class AsyncLightChallengeIter(AsyncLightIter[LightChallenge, Challenge]):
     """
     Utility class to lazy-load challenges retrieved under a :class:`.Video` loaded at once.
@@ -120,17 +132,23 @@ class AsyncTikTokAPI(TikTokAPI):
         await self.browser.close()
         await self.playwright.stop()
 
-    @property
-    def _light_videos_iter_type(self) -> Type[AsyncDeferredIterator[Video]]:
-        return AsyncLightVideoIter
+    def _light_videos_iter(
+        self, models: List[LightVideo]
+    ) -> AsyncDeferredIterator[LightVideo, Video]:
+        return AsyncLightVideoIter(models, self)
 
-    @property
-    def _light_challenge_iter_type(self) -> Type[AsyncDeferredIterator[Challenge]]:
-        return AsyncLightChallengeIter
+    def _light_user_list_iter(
+        self, models: List[LightUser]
+    ) -> AsyncDeferredIterator[LightUser, User]:
+        return AsyncLightUserIter(models, self)
 
-    @property
-    def _light_user_getter_type(self):
-        return AsyncLightUserGetter
+    def _light_challenge_iter(
+        self, models: List[LightChallenge]
+    ) -> AsyncDeferredIterator[LightChallenge, Challenge]:
+        return AsyncLightChallengeIter(models, self)
+
+    def _light_user_getter(self, user: str):
+        return AsyncLightUserGetter(user, self)
 
     async def _scrape_data(
         self, link: str, data_model: Type[_DataModelT]
@@ -198,11 +216,43 @@ class AsyncTikTokAPI(TikTokAPI):
     async def user(self, user: str, video_limit: int = 0) -> User:
         link = user_link(user)
         response, api_extras = await self._scrape_data(link, self._user_response_type)
-        return self._extract_user_from_response(response, api_extras, video_limit)
+        user = self._extract_user_from_response(response, api_extras, video_limit)
+
+        user.following = await self._grab_user_list(21, user.sec_uid)
+        user.followers = await self._grab_user_list(67, user.sec_uid)
+
+        return user
 
     async def video(self, link: str) -> Video:
         response, api_extras = await self._scrape_data(link, self._video_response_type)
         return self._extract_video_from_response(response, api_extras)
+
+    async def _grab_user_list(
+        self, scene: int, sec_uid: str
+    ) -> Optional[AsyncDeferredIterator[LightUser, User]]:
+        min_cursor = 0
+        out_list = []
+        try:
+            while min_cursor != -1:
+                list_request = await self.context.request.fetch(
+                    f"https://us.tiktok.com/api/user/list/"
+                    f"?minCursor={min_cursor}&scene={scene}&count=200&secUid={sec_uid}"
+                )
+                print(list_request)
+                response = APIResponse.parse_obj(list_request.json())
+                if response.status_code == 10222:
+                    raise TikTokAPIError("The requested user list is set to private.")
+
+                user_list = response.user_list
+                if user_list:
+                    out_list.extend([item.user for item in user_list])
+
+                min_cursor = response.min_cursor
+
+            return self._light_user_list_iter(out_list)
+        except (playwright.sync_api.Error, json.JSONDecodeError, TikTokAPIError) as e:
+            warnings.warn(f"Was unable to grab user list from scene {scene}:\n{e}")
+            return None
 
     async def _scroll_page_down(self, page: Page):
         await page.evaluate(

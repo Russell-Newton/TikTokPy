@@ -14,6 +14,7 @@ from typing import (
     Generic,
     Iterator,
     List,
+    Optional,
     Tuple,
     Type,
     TypeVar,
@@ -100,6 +101,17 @@ class LightVideoIter(LightIter[LightVideo, Video]):
 
     def fetch(self, idx: int) -> Video:
         return self._api.video(video_link(self._light_models[idx].id))
+
+
+class LightUserListIter(LightIter[LightUser, User]):
+    """
+    Utility class to lazy-load users retrieved as a class:`.User`'s follower/following list so they aren't all
+    loaded at once.
+    :autodoc-skip:
+    """
+
+    def fetch(self, idx: int) -> User:
+        return self._api.user(self._light_models[idx].unique_id)
 
 
 class LightChallengeIter(LightIter[LightChallenge, Challenge]):
@@ -211,17 +223,26 @@ class TikTokAPI:
             raise TikTokAPIError("TikTokAPI must be used as a context manager")
         return self._context
 
-    @property
-    def _light_videos_iter_type(self) -> Type[DeferredIterator[Video]]:
-        return LightVideoIter
+    def _light_videos_iter(
+        self, models: List[LightVideo]
+    ) -> DeferredIterator[LightVideo, Video]:
+        return LightVideoIter(models, self)
 
-    @property
-    def _light_challenge_iter_type(self) -> Type[DeferredIterator[Challenge]]:
-        return LightChallengeIter
+    # def _light_user_list_iter(self, scene: int, sec_uid: str) -> DeferredIterator[LightUser, User]:
+    #     return LightUserListIter(scene, sec_uid, self)
 
-    @property
-    def _light_user_getter_type(self):
-        return LightUserGetter
+    def _light_user_list_iter(
+        self, models: List[LightUser]
+    ) -> DeferredIterator[LightUser, User]:
+        return LightUserListIter(models, self)
+
+    def _light_challenge_iter(
+        self, models: List[LightChallenge]
+    ) -> DeferredIterator[LightChallenge, Challenge]:
+        return LightChallengeIter(models, self)
+
+    def _light_user_getter(self, user: str):
+        return LightUserGetter(user, self)
 
     @property
     def _challenge_response_type(self):
@@ -267,7 +288,12 @@ class TikTokAPI:
         """
         link = user_link(user)
         response, api_extras = self._scrape_data(link, self._user_response_type)
-        return self._extract_user_from_response(response, api_extras, video_limit)
+        user = self._extract_user_from_response(response, api_extras, video_limit)
+
+        user.following = self._grab_user_list(21, user.sec_uid)
+        user.followers = self._grab_user_list(67, user.sec_uid)
+
+        return user
 
     def video(self, link: str) -> Video:
         """
@@ -405,7 +431,34 @@ class TikTokAPI:
                     videos += extra.item_list
         if video_limit > 0:
             videos = videos[:video_limit]
-        return self._light_videos_iter_type(videos, self)
+        return self._light_videos_iter(videos)
+
+    def _grab_user_list(
+        self, scene: int, sec_uid: str
+    ) -> Optional[DeferredIterator[LightUser, User]]:
+        min_cursor = 0
+        out_list = []
+        try:
+            while min_cursor != -1:
+                list_request = self.context.request.fetch(
+                    f"https://www.tiktok.com/api/user/list/"
+                    f"?minCursor={min_cursor}&scene={scene}&count=200&secUid={sec_uid}"
+                )
+                # print(list_request)
+                response = APIResponse.parse_obj(list_request.json())
+                if response.status_code == 10222:
+                    raise TikTokAPIError("The requested user list is set to private.")
+
+                user_list = response.user_list
+                if user_list:
+                    out_list.extend([item.user for item in user_list])
+
+                min_cursor = response.min_cursor
+
+            return self._light_user_list_iter(out_list)
+        except (playwright.sync_api.Error, json.JSONDecodeError, TikTokAPIError) as e:
+            warnings.warn(f"Was unable to grab user list from scene {scene}:\n{e}")
+            return None
 
     def _extract_video_from_response(
         self,
@@ -429,11 +482,9 @@ class TikTokAPI:
                     comments += extra.comments
         for comment in comments:
             if isinstance(comment.user, LightUser):
-                comment.author = self._light_user_getter_type(
-                    comment.user.unique_id, self
-                )
+                comment.author = self._light_user_getter(comment.user.unique_id)
             else:
-                comment.author = self._light_user_getter_type(comment.user, self)
+                comment.author = self._light_user_getter(comment.user)
 
         video.comments = comments
         if not video.comments:
@@ -441,9 +492,9 @@ class TikTokAPI:
                 "Was unable to collect comments.\nA second attempt might work."
             )
         if isinstance(video.author, LightUser):
-            video.creator = self._light_user_getter_type(video.author.unique_id, self)
+            video.creator = self._light_user_getter(video.author.unique_id)
         else:
-            video.creator = self._light_user_getter_type(video.author, self)
+            video.creator = self._light_user_getter(video.author)
 
         video.tags = self._create_challenge_iter(video)
 
@@ -451,8 +502,8 @@ class TikTokAPI:
 
     def _create_challenge_iter(self, video: Video):
         if not video.challenges:
-            return self._light_challenge_iter_type([], self)
-        return self._light_challenge_iter_type(video.challenges, self)
+            return self._light_challenge_iter([])
+        return self._light_challenge_iter(video.challenges)
 
     def _scroll_page_down(self, page: Page):
         page.evaluate(

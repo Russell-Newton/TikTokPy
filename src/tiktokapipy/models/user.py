@@ -29,6 +29,7 @@ class LightUser(CamelCaseModel):
 
     unique_id: str
     """The User's unique user"""
+    sec_uid: str
 
 
 class User(LightUser):
@@ -44,7 +45,6 @@ class User(LightUser):
     ########################
     # Security information #
     ########################
-    sec_uid: str
     private_account: Optional[bool]
     verified: Optional[bool]
     # secret: Optional[bool]
@@ -88,6 +88,20 @@ class User(LightUser):
         ]
     ]
     """Set on return from API. Can be iterated over to load :class:`.Video`s."""
+    following: Optional[
+        Union[
+            DeferredIterator[LightUser, User],
+            AsyncDeferredIterator[LightUser, User],
+        ]
+    ]
+    """Set on return from API. Can be iterated over to load Users this User is following."""
+    followers: Optional[
+        Union[
+            DeferredIterator[LightUser, User],
+            AsyncDeferredIterator[LightUser, User],
+        ]
+    ]
+    """Set on return from API. Can be iterated over to load Users following this User."""
 
 
 from tiktokapipy.models.video import LightVideo, Video  # noqa E402
