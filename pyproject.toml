@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tiktokapipy"
-version = "0.1.8"
+version = "0.1.8.post1"
 authors = [
     { name="Russell Newton", email="russell.newton01@gmail.com" },
 ]
@@ -31,7 +31,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "playwright",
+    "playwright~=1.29",
     "pydantic",
     "requests",
 ]
