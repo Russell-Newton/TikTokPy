@@ -290,22 +290,18 @@ class TikTokAPI:
         def capture_api_extras(route: Route):
             try:
                 response = route.fetch()
+                route.continue_()
             except playwright.sync_api.Error:
                 return
 
             try:
                 _data = response.json()
             except json.JSONDecodeError:
-                route.fulfill(response=response)
                 return
 
             extras_json.append(_data)
             api_response = APIResponse.parse_obj(_data)
             api_extras.append(api_response)
-            route.fulfill(
-                response=response,
-                json=_data,
-            )
 
         for _ in range(self.navigation_retries + 1):
             self.context.clear_cookies()

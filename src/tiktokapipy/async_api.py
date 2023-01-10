@@ -141,22 +141,18 @@ class AsyncTikTokAPI(TikTokAPI):
         async def capture_api_extras(route: Route):
             try:
                 response = await route.fetch()
+                await route.continue_()
             except playwright.async_api.Error:
                 return
 
             try:
                 _data = await response.json()
             except json.JSONDecodeError:
-                await route.fulfill(response=response)
                 return
 
             extras_json.append(_data)
             api_response = APIResponse.parse_obj(_data)
             api_extras.append(api_response)
-            await route.fulfill(
-                response=response,
-                json=_data,
-            )
 
         for _ in range(self.navigation_retries + 1):
             await self.context.clear_cookies()
