@@ -137,6 +137,7 @@ class TikTokAPI:
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
+        navigator_type: str = 'Chromium', 
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
         context_kwargs: dict = None,
@@ -150,6 +151,7 @@ class TikTokAPI:
             specify the name of the dump file (exluding '.json').
         :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
             on slideshows.
+        :param navigator_type: Whether to launch Playwright with 'Chromium' or 'Firefox'. Set to 'Chromium' as default.
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out. Set to 0 to
             disable the timeout.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
@@ -165,14 +167,16 @@ class TikTokAPI:
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs or {}
+        self.navigator_type = navigator_type
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
 
     def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
-
-        self._browser = self.playwright.chromium.launch(headless=self.headless)
-
+        if (self.navigator_type == 'Firefox') | (self.navigator_type == 'firefox'):
+            self._browser = self.playwright.firefox.launch(headless=self.headless)
+        else:
+            self._browser = self.playwright.chromium.launch(headless=self.headless)
         context_kwargs = self.context_kwargs
 
         if self.emulate_mobile:
