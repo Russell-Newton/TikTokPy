@@ -151,7 +151,7 @@ class TikTokAPI:
             specify the name of the dump file (exluding '.json').
         :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
             on slideshows.
-        :param navigator_type: Whether to launch Playwright with 'Chromium' or 'Firefox'. Set to 'Chromium' as default.
+        :param navigator_type: Whether to launch Playwright with 'Chromium' or 'Firefox'.
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out. Set to 0 to
             disable the timeout.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
