@@ -14,6 +14,7 @@ from typing import (
     Generic,
     Iterator,
     List,
+    Literal,
     Tuple,
     Type,
     TypeVar,
@@ -137,7 +138,9 @@ class TikTokAPI:
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
-        navigator_type: str = "firefox",
+        navigator_type: Literal[
+            "Firefox", "firefox", "Chromium", "chromium"
+        ] = "firefox",
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
         context_kwargs: dict = None,
@@ -151,7 +154,8 @@ class TikTokAPI:
             specify the name of the dump file (exluding '.json').
         :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
             on slideshows.
-        :param navigator_type: Whether to launch Playwright with 'Chromium' or 'Firefox'.
+        :param navigator_type: Whether to launch Playwright with 'Chromium' or 'Firefox'
+            Note: 'Chromium' seems to make collecting comments on :ref:`Video`s impossible.
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out. Set to 0 to
             disable the timeout.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
