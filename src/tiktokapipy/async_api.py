@@ -100,10 +100,12 @@ class AsyncTikTokAPI(TikTokAPI):
 
     async def __aenter__(self) -> AsyncTikTokAPI:
         self._playwright = await async_playwright().start()
-        if (self.navigator_type == 'Firefox') | (self.navigator_type == 'firefox'):
+        if self.navigator_type.lower() == "firefox":
             self._browser = await self.playwright.firefox.launch(headless=self.headless)
         else:
-            self._browser = await self.playwright.chromium.launch(headless=self.headless)
+            self._browser = await self.playwright.chromium.launch(
+                headless=self.headless
+            )
 
         context_kwargs = self.context_kwargs
 

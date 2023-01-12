@@ -137,7 +137,7 @@ class TikTokAPI:
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
-        navigator_type: str = 'Chromium', 
+        navigator_type: str = "firefox",
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
         context_kwargs: dict = None,
@@ -173,7 +173,7 @@ class TikTokAPI:
 
     def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
-        if (self.navigator_type == 'Firefox') | (self.navigator_type == 'firefox'):
+        if self.navigator_type.lower() == "firefox":
             self._browser = self.playwright.firefox.launch(headless=self.headless)
         else:
             self._browser = self.playwright.chromium.launch(headless=self.headless)
