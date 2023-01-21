@@ -148,7 +148,8 @@ class TikTokAPI:
     ):
         """
         :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
-            load more content from the page.
+            load more content from the page. This is the default time for all API calls. It can be overridden in each
+            call.
         :param headless: Whether to use headless browsing.
         :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
             specify the name of the dump file (exluding '.json').
@@ -168,7 +169,7 @@ class TikTokAPI:
             For full details, see
             `BrowserType::launch() <https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch>`_.
         """
-        self.scroll_down_time = scroll_down_time
+        self.default_scroll_down_time = scroll_down_time
         self.headless = headless
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
@@ -251,49 +252,72 @@ class TikTokAPI:
             return MobileVideoResponse
         return VideoResponse
 
-    def challenge(self, challenge_name: str, video_limit: int = 0) -> Challenge:
+    def challenge(
+        self, challenge_name: str, video_limit: int = 0, scroll_down_time: float = None
+    ) -> Challenge:
         """
         Retrieve data on a :class:`.Challenge` (hashtag) from TikTok. Only up to the ``video_limit`` most recent videos
         will be retrievable by the scraper.
 
         :param challenge_name: The name of the challenge. e.g.: ``"fyp"``
         :param video_limit: The max number of recent videos to retrieve. Set to 0 for no limit
+        :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
+            load more content from the page. Leave as ``None`` to use the default time (set in API constructor).
         :return: A :class:`.Challenge` object containing the scraped data
         :rtype: :class:`.Challenge`
         """
         link = challenge_link(challenge_name)
-        response, api_extras = self._scrape_data(link, self._challenge_response_type)
+        response, api_extras = self._scrape_data(
+            link, self._challenge_response_type, scroll_down_time
+        )
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
-    def user(self, user: Union[int, str], video_limit: int = 0) -> User:
+    def user(
+        self,
+        user: Union[int, str],
+        video_limit: int = 0,
+        scroll_down_time: float = None,
+    ) -> User:
         """
         Retrieve data on a :class:`.User` from TikTok. Only up to the ``video_limit`` most recent videos will be
         retrievable by the scraper.
 
         :param user: The unique user or id of the user. e.g.: for @tiktok, use ``"tiktok"``
         :param video_limit: The max number of recent videos to retrieve. Set to 0 for no limit
+        :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
+            load more content from the page. Leave as ``None`` to use the default time (set in API constructor).
         :return: A :class:`.User` object containing the scraped data
         :rtype: :class:`.User`
         """
         link = user_link(user)
-        response, api_extras = self._scrape_data(link, self._user_response_type)
+        response, api_extras = self._scrape_data(
+            link, self._user_response_type, scroll_down_time
+        )
         return self._extract_user_from_response(response, api_extras, video_limit)
 
-    def video(self, link: str) -> Video:
+    def video(self, link: str, scroll_down_time: float = None) -> Video:
         """
         Retrieve data on a :class:`.Video` from TikTok. If the video is a slideshow, :attr:`.emulate_mobile` must be
         set to ``True`` at API initialization or this method will raise a :exc:`TikTokAPIError`.
 
         :param link: The link to the video. Can be found from a unique video id with :func:`.video_link`.
+        :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
+            load more content from the page. Leave as ``None`` to use the default time (set in API constructor).
         :return: A :class:`.Video` object containing the scraped data
         :rtype: :class:`.Video`
         """
-        response, api_extras = self._scrape_data(link, self._video_response_type)
+        response, api_extras = self._scrape_data(
+            link, self._video_response_type, scroll_down_time
+        )
         return self._extract_video_from_response(response, api_extras)
 
     def _scrape_data(
-        self, link: str, data_model: Type[_DataModelT]
+        self, link: str, data_model: Type[_DataModelT], scroll_down_time: float = None
     ) -> Tuple[_DataModelT, List[APIResponse]]:
+
+        if scroll_down_time is None:
+            scroll_down_time = self.default_scroll_down_time
+
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
@@ -323,8 +347,8 @@ class TikTokAPI:
                 page.goto(link)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
 
-                if self.scroll_down_time > 0:
-                    self._scroll_page_down(page)
+                if scroll_down_time > 0:
+                    self._scroll_page_down(page, scroll_down_time)
 
                 content = page.content()
                 page.close()
@@ -460,7 +484,7 @@ class TikTokAPI:
             return self._light_challenge_iter_type([], self)
         return self._light_challenge_iter_type(video.challenges, self)
 
-    def _scroll_page_down(self, page: Page):
+    def _scroll_page_down(self, page: Page, scroll_down_time: float):
         page.evaluate(
             """
             var intervalID = setInterval(function () {
@@ -469,7 +493,7 @@ class TikTokAPI:
             }, 500);
             """
         )
-        page.wait_for_timeout(self.scroll_down_time * 1000)
+        page.wait_for_timeout(scroll_down_time * 1000)
         page.evaluate("clearInterval(intervalID)")
 
 

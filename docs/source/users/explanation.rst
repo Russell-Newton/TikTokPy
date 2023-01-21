@@ -101,6 +101,10 @@ you want TikTokPy to scroll down for:
     data scraping with ``scroll_down_time``, you will need to create a second, mobile-emulating API instance. You will
     not be able to retrieve any data that isn't retrieved during page load with this second API.
 
+.. note::
+    ``scroll_down_time`` is also an available option on API calls. Specifying a value here will override the default
+    value set in the API constructor.
+
 Navigation Retries and Headless Browsing
 ----------------------------------------
 

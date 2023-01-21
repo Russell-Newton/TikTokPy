@@ -137,8 +137,12 @@ class AsyncTikTokAPI(TikTokAPI):
         return AsyncLightUserGetter
 
     async def _scrape_data(
-        self, link: str, data_model: Type[_DataModelT]
+        self, link: str, data_model: Type[_DataModelT], scroll_down_time: float = None
     ) -> Tuple[_DataModelT, List[APIResponse]]:
+
+        if scroll_down_time is None:
+            scroll_down_time = self.default_scroll_down_time
+
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
 
@@ -168,8 +172,8 @@ class AsyncTikTokAPI(TikTokAPI):
                 await page.goto(link)
                 await page.wait_for_selector("#SIGI_STATE", state="attached")
 
-                if self.scroll_down_time > 0:
-                    await self._scroll_page_down(page)
+                if self.default_scroll_down_time > 0:
+                    await self._scroll_page_down(page, scroll_down_time)
 
                 content = await page.content()
                 await page.close()
@@ -188,23 +192,31 @@ class AsyncTikTokAPI(TikTokAPI):
 
         return data, api_extras
 
-    async def challenge(self, challenge_name: str, video_limit: int = 0) -> Challenge:
+    async def challenge(
+        self, challenge_name: str, video_limit: int = 0, scroll_down_time: float = None
+    ) -> Challenge:
         link = challenge_link(challenge_name)
         response, api_extras = await self._scrape_data(
-            link, self._challenge_response_type
+            link, self._challenge_response_type, scroll_down_time
         )
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
-    async def user(self, user: str, video_limit: int = 0) -> User:
+    async def user(
+        self, user: str, video_limit: int = 0, scroll_down_time: float = None
+    ) -> User:
         link = user_link(user)
-        response, api_extras = await self._scrape_data(link, self._user_response_type)
+        response, api_extras = await self._scrape_data(
+            link, self._user_response_type, scroll_down_time
+        )
         return self._extract_user_from_response(response, api_extras, video_limit)
 
-    async def video(self, link: str) -> Video:
-        response, api_extras = await self._scrape_data(link, self._video_response_type)
+    async def video(self, link: str, scroll_down_time: float = None) -> Video:
+        response, api_extras = await self._scrape_data(
+            link, self._video_response_type, scroll_down_time
+        )
         return self._extract_video_from_response(response, api_extras)
 
-    async def _scroll_page_down(self, page: Page):
+    async def _scroll_page_down(self, page: Page, scroll_down_time: float):
         await page.evaluate(
             """
             var intervalID = setInterval(function () {
@@ -214,7 +226,7 @@ class AsyncTikTokAPI(TikTokAPI):
 
             """
         )
-        await page.wait_for_timeout(self.scroll_down_time * 1000)
+        await page.wait_for_timeout(scroll_down_time * 1000)
         await page.evaluate("clearInterval(intervalID)")
 
 
