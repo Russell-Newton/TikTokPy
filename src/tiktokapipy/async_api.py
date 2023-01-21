@@ -219,11 +219,16 @@ class AsyncTikTokAPI(TikTokAPI):
     async def _scroll_page_down(self, page: Page, scroll_down_time: float):
         await page.evaluate(
             """
+            var down = true;
             var intervalID = setInterval(function () {
                 var scrollingElement = (document.scrollingElement || document.body);
-                scrollingElement.scrollTop = scrollingElement.scrollHeight;
+                if (down) {
+                    scrollingElement.scrollTop = scrollingElement.scrollHeight;
+                } else {
+                    scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
+                }
+                down = !down;
             }, 200);
-
             """
         )
         await page.wait_for_timeout(scroll_down_time * 1000)

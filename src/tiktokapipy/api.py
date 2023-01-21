@@ -487,10 +487,16 @@ class TikTokAPI:
     def _scroll_page_down(self, page: Page, scroll_down_time: float):
         page.evaluate(
             """
+            var down = true;
             var intervalID = setInterval(function () {
                 var scrollingElement = (document.scrollingElement || document.body);
-                scrollingElement.scrollTop = scrollingElement.scrollHeight;
-            }, 500);
+                if (down) {
+                    scrollingElement.scrollTop = scrollingElement.scrollHeight;
+                } else {
+                    scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
+                }
+                down = !down;
+            }, 200);
             """
         )
         page.wait_for_timeout(scroll_down_time * 1000)
