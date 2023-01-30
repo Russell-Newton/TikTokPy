@@ -31,7 +31,7 @@ def test_sort_user_videos(sync_api, user_name):
     user = sync_api.user(user_name)
     most_recent = -1
     for video in user.videos.sorted_by(lambda vid: vid.stats.play_count).light_models:
-        assert video.stats.play_count > most_recent
+        assert video.stats.play_count >= most_recent
         most_recent = video.stats.play_count
 
 
@@ -39,5 +39,5 @@ async def test_sort_user_videos_async(async_api, user_name):
     user = await async_api.user(user_name)
     most_recent = -1
     for video in user.videos.sorted_by(lambda vid: vid.stats.play_count).light_models:
-        assert video.stats.play_count > most_recent
+        assert video.stats.play_count >= most_recent
         most_recent = video.stats.play_count
