@@ -25,7 +25,7 @@ class UserStats(CamelCaseModel):
 
 
 class LightUser(CamelCaseModel):
-    """:autodoc-skip:"""
+    """Bare minimum information for scraping"""
 
     unique_id: str
     """The User's unique user"""

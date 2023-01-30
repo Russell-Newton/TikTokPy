@@ -112,7 +112,7 @@ class ImagePost(CamelCaseModel):
 
 
 class LightVideo(CamelCaseModel):
-    """:autodoc-skip:"""
+    """Bare minimum information for scraping"""
 
     id: int
     """The unique video ID"""

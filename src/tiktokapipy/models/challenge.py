@@ -17,6 +17,8 @@ class ChallengeStats(CamelCaseModel):
 
 
 class LightChallenge(CamelCaseModel):
+    """Bare minimum information for scraping"""
+
     title: str
 
 

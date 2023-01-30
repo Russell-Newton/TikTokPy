@@ -32,7 +32,7 @@ def test_sort_challenge_videos(sync_api, challenge_name):
     most_recent = -1
     for video in challenge.videos.sorted_by(
         lambda vid: vid.stats.play_count
-    )._light_models:
+    ).light_models:
         assert video.stats.play_count > most_recent
         most_recent = video.stats.play_count
 
@@ -42,6 +42,6 @@ async def test_sort_challenge_videos_async(async_api, challenge_name):
     most_recent = -1
     for video in challenge.videos.sorted_by(
         lambda vid: vid.stats.play_count
-    )._light_models:
+    ).light_models:
         assert video.stats.play_count > most_recent
         most_recent = video.stats.play_count

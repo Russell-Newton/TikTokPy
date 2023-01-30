@@ -7,7 +7,15 @@ from __future__ import annotations
 import json
 from abc import abstractmethod
 from re import sub
-from typing import TYPE_CHECKING, Callable, Protocol, TypeVar, Union, runtime_checkable
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Iterable,
+    Protocol,
+    TypeVar,
+    Union,
+    runtime_checkable,
+)
 
 if TYPE_CHECKING:
     from _typeshed import SupportsLessThan
@@ -89,13 +97,15 @@ class TitleCaseModel(TikTokDataModel):
         json_loads = _load_with_id_alias
 
 
-_DeferredIterInT = TypeVar("_DeferredIterInT", bound=TikTokDataModel, covariant=True)
-_DeferredIterOutT = TypeVar("_DeferredIterOutT", bound=TikTokDataModel, covariant=True)
+_DeferredIterInT = TypeVar("_DeferredIterInT", bound=TikTokDataModel)
+_DeferredIterOutT = TypeVar("_DeferredIterOutT", bound=TikTokDataModel)
 
 
 @runtime_checkable
 class DeferredIterator(Protocol[_DeferredIterInT, _DeferredIterOutT]):
     """:autodoc-skip:"""
+
+    light_models: Iterable[_DeferredIterInT]
 
     def __iter__(self) -> DeferredIterator[_DeferredIterInT, _DeferredIterOutT]:
         ...
@@ -124,6 +134,8 @@ class DeferredIterator(Protocol[_DeferredIterInT, _DeferredIterOutT]):
 @runtime_checkable
 class AsyncDeferredIterator(Protocol[_DeferredIterInT, _DeferredIterOutT]):
     """:autodoc-skip:"""
+
+    light_models: Iterable[_DeferredIterInT]
 
     def __aiter__(self) -> DeferredIterator[_DeferredIterInT, _DeferredIterOutT]:
         ...

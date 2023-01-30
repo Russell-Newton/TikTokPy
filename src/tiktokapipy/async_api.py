@@ -38,7 +38,7 @@ class AsyncLightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
     """
 
     def __init__(self, light_models: List[_LightIterInT], api: AsyncTikTokAPI):
-        self._light_models = light_models
+        self.light_models: List[_LightIterInT] = light_models
         self._api = api
 
     @abstractmethod
@@ -49,7 +49,7 @@ class AsyncLightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
         self, key: Callable[[_LightIterInT], SupportsLessThan], reverse: bool = False
     ) -> AsyncLightIter[_LightIterInT, _LightIterOutT]:
         return self.__class__(
-            sorted(self._light_models, key=key, reverse=reverse), self._api
+            sorted(self.light_models, key=key, reverse=reverse), self._api
         )
 
     def __aiter__(self) -> AsyncLightIter[_LightIterInT, _LightIterOutT]:
@@ -57,7 +57,7 @@ class AsyncLightIter(Generic[_LightIterInT, _LightIterOutT], ABC):
         return self
 
     async def __anext__(self) -> _LightIterOutT:
-        if self._next_up == len(self._light_models):
+        if self._next_up == len(self.light_models):
             raise StopAsyncIteration
         out = await self.fetch(self._next_up)
         self._next_up += 1
@@ -72,7 +72,7 @@ class AsyncLightVideoIter(AsyncLightIter[LightVideo, Video]):
     """
 
     async def fetch(self, idx: int) -> Video:
-        return await self._api.video(video_link(self._light_models[idx].id))
+        return await self._api.video(video_link(self.light_models[idx].id))
 
 
 class AsyncLightChallengeIter(AsyncLightIter[LightChallenge, Challenge]):
@@ -82,14 +82,14 @@ class AsyncLightChallengeIter(AsyncLightIter[LightChallenge, Challenge]):
     """
 
     async def fetch(self, idx: int) -> Challenge:
-        return await self._api.challenge(self._light_models[idx].title)
+        return await self._api.challenge(self.light_models[idx].title)
 
 
 class AsyncLightUserGetter(LightUserGetter):
     """:autodoc-skip:"""
 
     async def __call__(self) -> User:
-        return await self._api.user(self._user.unique_id)
+        return await self._api.user(self.light_user.unique_id)
 
 
 class AsyncTikTokAPI(TikTokAPI):
@@ -127,11 +127,13 @@ class AsyncTikTokAPI(TikTokAPI):
         await self.playwright.stop()
 
     @property
-    def _light_videos_iter_type(self) -> Type[AsyncDeferredIterator[Video]]:
+    def _light_videos_iter_type(self) -> Type[AsyncDeferredIterator[LightVideo, Video]]:
         return AsyncLightVideoIter
 
     @property
-    def _light_challenge_iter_type(self) -> Type[AsyncDeferredIterator[Challenge]]:
+    def _light_challenge_iter_type(
+        self,
+    ) -> Type[AsyncDeferredIterator[LightChallenge, Challenge]]:
         return AsyncLightChallengeIter
 
     @property

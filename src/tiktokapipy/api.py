@@ -66,7 +66,7 @@ class LightIter(Generic[_LightIterInT, _LightIterOutT], Iterator[_LightIterOutT]
     """
 
     def __init__(self, light_models: List[_LightIterInT], api: TikTokAPI):
-        self._light_models = light_models
+        self.light_models: List[_LightIterInT] = light_models
         self._api = api
 
     @abstractmethod
@@ -77,7 +77,7 @@ class LightIter(Generic[_LightIterInT, _LightIterOutT], Iterator[_LightIterOutT]
         self, key: Callable[[_LightIterInT], SupportsLessThan], reverse: bool = False
     ) -> LightIter[_LightIterInT, _LightIterOutT]:
         return self.__class__(
-            sorted(self._light_models, key=key, reverse=reverse), self._api
+            sorted(self.light_models, key=key, reverse=reverse), self._api
         )
 
     def __iter__(self) -> LightIter[_LightIterInT, _LightIterOutT]:
@@ -85,7 +85,7 @@ class LightIter(Generic[_LightIterInT, _LightIterOutT], Iterator[_LightIterOutT]
         return self
 
     def __next__(self) -> _LightIterOutT:
-        if self._next_up == len(self._light_models):
+        if self._next_up == len(self.light_models):
             raise StopIteration
         out = self.fetch(self._next_up)
         self._next_up += 1
@@ -100,7 +100,7 @@ class LightVideoIter(LightIter[LightVideo, Video]):
     """
 
     def fetch(self, idx: int) -> Video:
-        return self._api.video(video_link(self._light_models[idx].id))
+        return self._api.video(video_link(self.light_models[idx].id))
 
 
 class LightChallengeIter(LightIter[LightChallenge, Challenge]):
@@ -110,7 +110,7 @@ class LightChallengeIter(LightIter[LightChallenge, Challenge]):
     """
 
     def fetch(self, idx: int) -> Challenge:
-        return self._api.challenge(self._light_models[idx].title)
+        return self._api.challenge(self.light_models[idx].title)
 
 
 class LightUserGetter:
@@ -121,11 +121,11 @@ class LightUserGetter:
     """
 
     def __init__(self, user: str, api: TikTokAPI):
-        self._user = LightUser(unique_id=user)
+        self.light_user = LightUser(unique_id=user)
         self._api = api
 
     def __call__(self) -> User:
-        return self._api.user(self._user.unique_id)
+        return self._api.user(self.light_user.unique_id)
 
 
 class TikTokAPI:
@@ -228,11 +228,13 @@ class TikTokAPI:
         return self._context
 
     @property
-    def _light_videos_iter_type(self) -> Type[DeferredIterator[Video]]:
+    def _light_videos_iter_type(self) -> Type[DeferredIterator[LightVideo, Video]]:
         return LightVideoIter
 
     @property
-    def _light_challenge_iter_type(self) -> Type[DeferredIterator[Challenge]]:
+    def _light_challenge_iter_type(
+        self,
+    ) -> Type[DeferredIterator[LightChallenge, Challenge]]:
         return LightChallengeIter
 
     @property
