@@ -177,13 +177,18 @@ class TikTokAPI:
         self.navigator_type = navigator_type if not emulate_mobile else "chromium"
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
+        self.kwargs = kwargs
 
     def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
         if self.navigator_type.lower() == "firefox":
-            self._browser = self.playwright.firefox.launch(headless=self.headless)
+            self._browser = self.playwright.firefox.launch(
+                headless=self.headless, **self.kwargs
+            )
         else:
-            self._browser = self.playwright.chromium.launch(headless=self.headless)
+            self._browser = self.playwright.chromium.launch(
+                headless=self.headless, **self.kwargs
+            )
         context_kwargs = self.context_kwargs
 
         if self.emulate_mobile:
