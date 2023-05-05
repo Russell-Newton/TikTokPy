@@ -321,4 +321,24 @@ images with a sound, you'll need to join these images together with the sound. I
 
 This entire process could also be done with the synchronous API, but it probably makes less sense.
 
+.. warning::
+
+    If this gives you 403 errors, you will likely need to carry over a cookie and a header when you make the HTTP GET
+    request:
+
+    .. code-block:: py
+
+        async def save_video(video: Video, api: AsyncTikTokAPI):
+            # Carrying over this cookie tricks TikTok into thinking this ClientSession was the Playwright instance
+            # used by the AsyncTikTokAPI instance
+            async with aiohttp.ClientSession(cookies={cookie["name"]: cookie["value"] for cookie in await api.context.cookies() if cookie["name"] == "tt_chain_token"}) as session:
+                # Creating this header tricks TikTok into thinking it made the request itself
+                async with session.get(video.video.download_addr, headers={"referer": "https://www.tiktok.com/"}) as resp:
+                    return io.BytesIO(await resp.read())
+
+    Note that this does require you to pass the api instance to this function, and you will likely also need to update
+    the slideshow function as well.
+
+    Credit to `@papayyg <https://github.com/papayyg>`_ for identifying a solution to this issue in issue `Issue #35 <https://github.com/Russell-Newton/TikTokPy/issues/35#issuecomment-1502976477>`_
+
 .. _ffmpeg: https://ffmpeg.org/download.html
