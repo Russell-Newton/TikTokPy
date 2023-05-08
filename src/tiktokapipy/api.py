@@ -475,7 +475,8 @@ class TikTokAPI:
         video.comments = comments
         if not video.comments:
             warnings.warn(
-                "Was unable to collect comments.\nA second attempt might work."
+                "Was unable to collect comments.\nA second attempt might work.",
+                stacklevel=3,
             )
         if isinstance(video.author, LightUser):
             video.creator = self._light_user_getter_type(video.author.unique_id, self)
