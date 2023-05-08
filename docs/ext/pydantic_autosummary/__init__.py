@@ -70,11 +70,6 @@ from docutils.statemachine import StringList
 from sphinx import addnodes
 from sphinx.application import Sphinx
 from sphinx.config import Config
-from sphinx.deprecation import (
-    RemovedInSphinx60Warning,
-    RemovedInSphinx70Warning,
-    deprecated_alias,
-)
 from sphinx.environment import BuildEnvironment
 from sphinx.ext.autodoc import INSTANCEATTR, Documenter
 from sphinx.ext.autodoc.directive import DocumenterBridge, Options
@@ -152,14 +147,14 @@ def autosummary_table_visit_html(self: HTMLTranslator, node: autosummary_table) 
 
 
 # -- autodoc integration -------------------------------------------------------
-deprecated_alias(
-    "sphinx.ext.autosummary",
-    {
-        "_app": None,
-    },
-    RemovedInSphinx60Warning,
-    {},
-)
+# deprecated_alias(
+#     "sphinx.ext.autosummary",
+#     {
+#         "_app": None,
+#     },
+#     DeprecationWarning,
+#     {},
+# )
 
 
 class FakeApplication:
