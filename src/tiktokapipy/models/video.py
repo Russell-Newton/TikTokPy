@@ -72,7 +72,7 @@ class MusicData(CamelCaseModel):
     id: int
     title: str
     play_url: str
-    author_name: str
+    author_name: Optional[str]
     duration: int
     original: bool
     album: Optional[str]
