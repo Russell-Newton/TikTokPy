@@ -141,11 +141,22 @@ class AsyncTikTokAPI(TikTokAPI):
         return AsyncLightUserGetter
 
     async def _scrape_data(
-        self, link: str, data_model: Type[_DataModelT], scroll_down_time: float = None
+        self,
+        link: str,
+        data_model: Type[_DataModelT],
+        scroll_down_time: float = None,
+        scroll_down_delay: float = None,
+        scroll_down_iter_delay: float = None,
     ) -> Tuple[_DataModelT, List[APIResponse]]:
 
         if scroll_down_time is None:
             scroll_down_time = self.default_scroll_down_time
+
+        if scroll_down_delay is None:
+            scroll_down_delay = self.default_scroll_down_delay
+
+        if scroll_down_iter_delay is None:
+            scroll_down_iter_delay = self.default_scroll_down_iter_delay
 
         api_extras: List[APIResponse] = []
         extras_json: List[dict] = []
@@ -173,11 +184,16 @@ class AsyncTikTokAPI(TikTokAPI):
             await page.route("**/api/comment/list/*", capture_api_extras)
             await page.route("**/api/post/item_list/*", capture_api_extras)
             try:
-                await page.goto(link)
+                await page.goto(link, wait_until=None)
                 await page.wait_for_selector("#SIGI_STATE", state="attached")
 
                 if self.default_scroll_down_time > 0:
-                    await self._scroll_page_down(page, scroll_down_time)
+                    await self._scroll_page_down(
+                        page,
+                        scroll_down_time,
+                        scroll_down_delay,
+                        scroll_down_iter_delay,
+                    )
 
                 content = await page.content()
                 await page.close()
@@ -197,30 +213,65 @@ class AsyncTikTokAPI(TikTokAPI):
         return data, api_extras
 
     async def challenge(
-        self, challenge_name: str, video_limit: int = 0, scroll_down_time: float = None
+        self,
+        challenge_name: str,
+        video_limit: int = 0,
+        scroll_down_time: float = None,
+        scroll_down_delay: float = None,
+        scroll_down_iter_delay: float = None,
     ) -> Challenge:
         link = challenge_link(challenge_name)
         response, api_extras = await self._scrape_data(
-            link, self._challenge_response_type, scroll_down_time
+            link,
+            self._challenge_response_type,
+            scroll_down_time,
+            scroll_down_delay,
+            scroll_down_iter_delay,
         )
         return self._extract_challenge_from_response(response, api_extras, video_limit)
 
     async def user(
-        self, user: str, video_limit: int = 0, scroll_down_time: float = None
+        self,
+        user: str,
+        video_limit: int = 0,
+        scroll_down_time: float = None,
+        scroll_down_delay: float = None,
+        scroll_down_iter_delay: float = None,
     ) -> User:
         link = user_link(user)
         response, api_extras = await self._scrape_data(
-            link, self._user_response_type, scroll_down_time
+            link,
+            self._user_response_type,
+            scroll_down_time,
+            scroll_down_delay,
+            scroll_down_iter_delay,
         )
         return self._extract_user_from_response(response, api_extras, video_limit)
 
-    async def video(self, link: str, scroll_down_time: float = None) -> Video:
+    async def video(
+        self,
+        link: str,
+        scroll_down_time: float = None,
+        scroll_down_delay: float = None,
+        scroll_down_iter_delay: float = None,
+    ) -> Video:
         response, api_extras = await self._scrape_data(
-            link, self._video_response_type, scroll_down_time
+            link,
+            self._video_response_type,
+            scroll_down_time,
+            scroll_down_delay,
+            scroll_down_iter_delay,
         )
         return self._extract_video_from_response(response, api_extras)
 
-    async def _scroll_page_down(self, page: Page, scroll_down_time: float):
+    async def _scroll_page_down(
+        self,
+        page: Page,
+        scroll_down_time: float,
+        scroll_down_delay: float,
+        scroll_down_iter_delay: float,
+    ):
+        await page.wait_for_timeout(scroll_down_delay * 1000)
         await page.evaluate(
             """
             var down = true;
@@ -232,8 +283,10 @@ class AsyncTikTokAPI(TikTokAPI):
                     scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
                 }
                 down = !down;
-            }, 200);
+            },
             """
+            + str(scroll_down_iter_delay * 1000)
+            + ");"
         )
         await page.wait_for_timeout(scroll_down_time * 1000)
         await page.evaluate("clearInterval(intervalID)")
