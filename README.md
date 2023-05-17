@@ -26,6 +26,7 @@
     * [Installation](#installation)
     * [Quick Start Guide](#quick-start-guide)
 * [Documentation](#documentation)
+* [Disclaimer](#disclaimer)
 
 ## Getting Started
 
@@ -82,3 +83,9 @@ More examples, including how to download videos and slideshows, can be found in 
 ## Documentation
 
 You can view the full documentation on [Read the Docs](https://tiktokpy.readthedocs.io/en/latest/).
+
+<hr>
+
+## Disclaimer
+
+TikTokPy is in no way affiliated with, authorized, maintained, sponsored or endorsed by TikTok or any of its affiliates or subsidiaries. Use of automated scripts to collect information from or otherwise interact with TikTok and its related services is against [TikTok's Terms of Service](https://www.tiktok.com/legal/page/us/terms-of-service/en). This is an independent and unofficial API. Use at your own risk. For educational purposes only.
