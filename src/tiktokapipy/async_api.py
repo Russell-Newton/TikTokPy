@@ -5,6 +5,7 @@ Asynchronous API for data scraping
 from __future__ import annotations
 
 import json
+import sys
 import traceback
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, Generic, List, Tuple, Type
@@ -100,14 +101,9 @@ class AsyncTikTokAPI(TikTokAPI):
 
     async def __aenter__(self) -> AsyncTikTokAPI:
         self._playwright = await async_playwright().start()
-        if self.navigator_type.lower() == "firefox":
-            self._browser = await self.playwright.firefox.launch(
-                headless=self.headless, **self.kwargs
-            )
-        else:
-            self._browser = await self.playwright.chromium.launch(
-                headless=self.headless, **self.kwargs
-            )
+        self._browser = await self.playwright.chromium.launch(
+            headless=self.headless, **self.kwargs
+        )
 
         context_kwargs = self.context_kwargs
 
@@ -163,9 +159,12 @@ class AsyncTikTokAPI(TikTokAPI):
 
         async def capture_api_extras(route: Route):
             try:
-                response = await route.fetch()
                 await route.continue_()
+                response = await route.request.response()
             except playwright.async_api.Error:
+                return
+
+            if not response:
                 return
 
             try:
@@ -180,9 +179,21 @@ class AsyncTikTokAPI(TikTokAPI):
         for _ in range(self.navigation_retries + 1):
             await self.context.clear_cookies()
             page: Page = await self._context.new_page()
-            await page.route("**/api/challenge/item_list/*", capture_api_extras)
-            await page.route("**/api/comment/list/*", capture_api_extras)
-            await page.route("**/api/post/item_list/*", capture_api_extras)
+            await page.route("**/api/challenge/item_list/**", capture_api_extras)
+            await page.route("**/api/comment/list/**", capture_api_extras)
+            await page.route("**/api/post/item_list/**", capture_api_extras)
+            await page.add_init_script(
+                """
+if (navigator.webdriver === false) {
+    // Post Chrome 89.0.4339.0 and already good
+} else if (navigator.webdriver === undefined) {
+    // Pre Chrome 89.0.4339.0 and already good
+} else {
+    // Pre Chrome 88.0.4291.0 and needs patching
+    delete Object.getPrototypeOf(navigator).webdriver
+}
+            """
+            )
             try:
                 await page.goto(link, wait_until=None)
                 await page.wait_for_selector("#SIGI_STATE", state="attached")
@@ -199,8 +210,12 @@ class AsyncTikTokAPI(TikTokAPI):
                 await page.close()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
-            except (TimeoutError, ValidationError, IndexError) as e:
+            except (ValidationError, IndexError) as e:
                 traceback.print_exception(type(e), e, e.__traceback__)
+                await page.close()
+                continue
+            except TimeoutError:
+                print("Reached navigation timeout. Retrying...", file=sys.stderr)
                 await page.close()
                 continue
             break
@@ -274,16 +289,16 @@ class AsyncTikTokAPI(TikTokAPI):
         await page.wait_for_timeout(scroll_down_delay * 1000)
         await page.evaluate(
             """
-            var down = true;
-            var intervalID = setInterval(function () {
-                var scrollingElement = (document.scrollingElement || document.body);
-                if (down) {
-                    scrollingElement.scrollTop = scrollingElement.scrollHeight;
-                } else {
-                    scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
-                }
-                down = !down;
-            },
+var down = true;
+var intervalID = setInterval(function () {
+    var scrollingElement = (document.scrollingElement || document.body);
+    if (down) {
+        scrollingElement.scrollTop = scrollingElement.scrollHeight;
+    } else {
+        scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
+    }
+    down = !down;
+},
             """
             + str(scroll_down_iter_delay * 1000)
             + ");"

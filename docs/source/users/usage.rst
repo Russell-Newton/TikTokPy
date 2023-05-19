@@ -307,9 +307,7 @@ images with a sound, you'll need to join these images together with the sound. I
                 return io.BytesIO(await resp.read())
 
     async def download_video():
-        # mobile emulation is necessary to retrieve slideshows
-        # if you don't want this, you can set emulate_mobile=False and skip if the video has an image_post property
-        async with AsyncTikTokAPI(emulate_mobile=True) as api:
+        async with AsyncTikTokAPI() as api:
             video: Video = await api.video(link)
             if video.image_post:
                 downloaded = await save_slideshow(video)

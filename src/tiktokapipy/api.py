@@ -5,6 +5,7 @@ Synchronous API for data scraping
 from __future__ import annotations
 
 import json
+import sys
 import traceback
 import warnings
 from abc import ABC, abstractmethod
@@ -14,7 +15,6 @@ from typing import (
     Generic,
     Iterator,
     List,
-    Literal,
     Tuple,
     Type,
     TypeVar,
@@ -140,9 +140,6 @@ class TikTokAPI:
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
-        navigator_type: Literal[
-            "Firefox", "firefox", "Chromium", "chromium"
-        ] = "firefox",
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
         context_kwargs: dict = None,
@@ -162,10 +159,6 @@ class TikTokAPI:
             specify the name of the dump file (exluding '.json').
         :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
             on slideshows.
-        :param navigator_type: Whether to launch Playwright with 'Chromium' or 'Firefox'.
-            'Firefox' is incompatible with ``emulate_mobile=True``.
-            Note: 'Chromium' seems to make collecting comments on :ref:`Video`s impossible. Comments can't be collected
-            in mobile.
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out. Set to 0 to
             disable the timeout.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
@@ -183,21 +176,15 @@ class TikTokAPI:
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs or {}
-        self.navigator_type = navigator_type if not emulate_mobile else "chromium"
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
         self.kwargs = kwargs
 
     def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
-        if self.navigator_type.lower() == "firefox":
-            self._browser = self.playwright.firefox.launch(
-                headless=self.headless, **self.kwargs
-            )
-        else:
-            self._browser = self.playwright.chromium.launch(
-                headless=self.headless, **self.kwargs
-            )
+        self._browser = self.playwright.chromium.launch(
+            headless=self.headless, **self.kwargs
+        )
         context_kwargs = self.context_kwargs
 
         if self.emulate_mobile:
@@ -378,9 +365,12 @@ class TikTokAPI:
 
         def capture_api_extras(route: Route):
             try:
-                response = route.fetch()
                 route.continue_()
+                response = route.request.response()
             except playwright.sync_api.Error:
+                return
+
+            if not response:
                 return
 
             try:
@@ -395,9 +385,21 @@ class TikTokAPI:
         for _ in range(self.navigation_retries + 1):
             self.context.clear_cookies()
             page: Page = self.context.new_page()
-            page.route("**/api/challenge/item_list/*", capture_api_extras)
-            page.route("**/api/comment/list/*", capture_api_extras)
-            page.route("**/api/post/item_list/*", capture_api_extras)
+            page.route("**/api/challenge/item_list/**", capture_api_extras)
+            page.route("**/api/comment/list/**", capture_api_extras)
+            page.route("**/api/post/item_list/**", capture_api_extras)
+            page.add_init_script(
+                """
+if (navigator.webdriver === false) {
+    // Post Chrome 89.0.4339.0 and already good
+} else if (navigator.webdriver === undefined) {
+    // Pre Chrome 89.0.4339.0 and already good
+} else {
+    // Pre Chrome 88.0.4291.0 and needs patching
+    delete Object.getPrototypeOf(navigator).webdriver
+}
+            """
+            )
             try:
                 page.goto(link, wait_until=None)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
@@ -414,8 +416,12 @@ class TikTokAPI:
                 page.close()
 
                 data = self._extract_and_dump_data(content, extras_json, data_model)
-            except (TimeoutError, ValidationError, IndexError) as e:
+            except (ValidationError, IndexError) as e:
                 traceback.print_exception(type(e), e, e.__traceback__)
+                page.close()
+                continue
+            except TimeoutError:
+                print("Reached navigation timeout. Retrying...", file=sys.stderr)
                 page.close()
                 continue
             break
@@ -528,7 +534,8 @@ class TikTokAPI:
         video.comments = comments
         if not video.comments:
             warnings.warn(
-                "Was unable to collect comments.\nA second attempt might work.",
+                "Was unable to collect comments.\n"
+                "A second attempt or setting a nonzero value for scroll_down_time might work.",
                 stacklevel=3,
             )
         if isinstance(video.author, LightUser):
@@ -555,16 +562,16 @@ class TikTokAPI:
         page.wait_for_timeout(scroll_down_delay * 1000)
         page.evaluate(
             """
-            var down = true;
-            var intervalID = setInterval(function () {
-                var scrollingElement = (document.scrollingElement || document.body);
-                if (down) {
-                    scrollingElement.scrollTop = scrollingElement.scrollHeight;
-                } else {
-                    scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
-                }
-                down = !down;
-            },
+var down = true;
+var intervalID = setInterval(function () {
+    var scrollingElement = (document.scrollingElement || document.body);
+    if (down) {
+        scrollingElement.scrollTop = scrollingElement.scrollHeight;
+    } else {
+        scrollingElement.scrollTop = scrollingElement.scrollTop - 100;
+    }
+    down = !down;
+},
             """
             + str(scroll_down_iter_delay * 1000)
             + ");"
