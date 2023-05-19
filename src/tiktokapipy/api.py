@@ -15,6 +15,8 @@ from typing import (
     Generic,
     Iterator,
     List,
+    Literal,
+    Optional,
     Tuple,
     Type,
     TypeVar,
@@ -143,6 +145,9 @@ class TikTokAPI:
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
         context_kwargs: dict = None,
+        navigator_type: Optional[
+            Literal["Firefox", "firefox", "Chromium", "chromium"]
+        ] = None,
         **kwargs,
     ):
         """
@@ -165,6 +170,7 @@ class TikTokAPI:
             not retry navigation.
         :param context_kwargs: Any extra kwargs used to initialize the playwright browser context. For full details,
             see `Browser::new_context() <https://playwright.dev/python/docs/api/class-browser#browser-new-context>`_.
+        :param navigator_type: **DEPRECATED as of 0.1.13**, left in for backwards-compatibility.
         :param kwargs: Any extra kwargs used to initialize the playwright browser (e.g.: proxy, etc.).
             For full details, see
             `BrowserType::launch() <https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch>`_.
@@ -179,12 +185,19 @@ class TikTokAPI:
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
         self.kwargs = kwargs
+        if navigator_type is not None:
+            warnings.warn(
+                "The navigator_type parameter is deprecated. Chromium is always used as of 0.1.13.",
+                category=DeprecationWarning,
+                stacklevel=2,
+            )
 
     def __enter__(self) -> TikTokAPI:
         self._playwright = sync_playwright().start()
         self._browser = self.playwright.chromium.launch(
             headless=self.headless, **self.kwargs
         )
+
         context_kwargs = self.context_kwargs
 
         if self.emulate_mobile:
@@ -533,10 +546,10 @@ if (navigator.webdriver === false) {
 
         video.comments = comments
         if not video.comments:
-            warnings.warn(
+            print(
                 "Was unable to collect comments.\n"
                 "A second attempt or setting a nonzero value for scroll_down_time might work.",
-                stacklevel=3,
+                file=sys.stderr,
             )
         if isinstance(video.author, LightUser):
             video.creator = self._light_user_getter_type(video.author.unique_id, self)
