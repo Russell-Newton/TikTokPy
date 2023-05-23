@@ -5,8 +5,8 @@ Asynchronous API for data scraping
 from __future__ import annotations
 
 import json
-import sys
 import traceback
+import warnings
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable, Generic, List, Tuple, Type
 
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 import playwright.async_api
 from playwright.async_api import Page, Route, TimeoutError, async_playwright
 from pydantic import ValidationError
-from tiktokapipy import TikTokAPIError
+from tiktokapipy import TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.api import (
     LightUserGetter,
     TikTokAPI,
@@ -215,7 +215,11 @@ if (navigator.webdriver === false) {
                 await page.close()
                 continue
             except TimeoutError:
-                print("Reached navigation timeout. Retrying...", file=sys.stderr)
+                warnings.warn(
+                    "Reached navigation timeout. Retrying...",
+                    category=TikTokAPIWarning,
+                    stacklevel=2,
+                )
                 await page.close()
                 continue
             break

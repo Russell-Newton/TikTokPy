@@ -5,7 +5,6 @@ Synchronous API for data scraping
 from __future__ import annotations
 
 import json
-import sys
 import traceback
 import warnings
 from abc import ABC, abstractmethod
@@ -29,7 +28,7 @@ if TYPE_CHECKING:
 import playwright.sync_api
 from playwright.sync_api import Page, Route, TimeoutError, sync_playwright
 from pydantic import ValidationError
-from tiktokapipy import TikTokAPIError
+from tiktokapipy import TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.models import DeferredIterator, TikTokDataModel
 from tiktokapipy.models.challenge import Challenge, LightChallenge, challenge_link
 from tiktokapipy.models.raw_data import (
@@ -434,7 +433,11 @@ if (navigator.webdriver === false) {
                 page.close()
                 continue
             except TimeoutError:
-                print("Reached navigation timeout. Retrying...", file=sys.stderr)
+                warnings.warn(
+                    "Reached navigation timeout. Retrying...",
+                    category=TikTokAPIWarning,
+                    stacklevel=2,
+                )
                 page.close()
                 continue
             break
@@ -546,10 +549,11 @@ if (navigator.webdriver === false) {
 
         video.comments = comments
         if not video.comments:
-            print(
+            warnings.warn(
                 "Was unable to collect comments.\n"
                 "A second attempt or setting a nonzero value for scroll_down_time might work.",
-                file=sys.stderr,
+                category=TikTokAPIWarning,
+                stacklevel=2,
             )
         if isinstance(video.author, LightUser):
             video.creator = self._light_user_getter_type(video.author.unique_id, self)

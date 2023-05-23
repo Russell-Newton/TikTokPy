@@ -80,6 +80,16 @@ async with AsyncTikTokAPI() as api:
 More examples, including how to download videos and slideshows, can be found in the
 [documentation](https://tiktokpy.readthedocs.io/en/latest/users/usage.html#examples).
 
+Warnings can be ignored as follows:
+
+```py
+import warnings
+
+from tiktokapipy import TikTokAPIWarning
+
+warnings.filterwarnings("ignore", category=TikTokAPIWarning)
+```
+
 ## Documentation
 
 You can view the full documentation on [Read the Docs](https://tiktokpy.readthedocs.io/en/latest/).
