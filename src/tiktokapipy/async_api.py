@@ -14,7 +14,13 @@ if TYPE_CHECKING:
     from _typeshed import SupportsLessThan
 
 import playwright.async_api
-from playwright.async_api import Page, Route, TimeoutError, async_playwright
+from playwright.async_api import (
+    ConsoleMessage,
+    Page,
+    Route,
+    TimeoutError,
+    async_playwright,
+)
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.api import (
@@ -291,6 +297,34 @@ if (navigator.webdriver === false) {
         scroll_down_iter_delay: float,
     ):
         await page.wait_for_timeout(scroll_down_delay * 1000)
+        await page.evaluate(
+            """
+        const observer = new MutationObserver((mutationList, observer) => {
+            for (const mutation of mutationList) {
+                if (mutation.type == "childList" && mutation.addedNodes.length > 0) {
+                    for (const node of mutation.addedNodes) {
+                        const matches = node.querySelectorAll("[role='alert']");
+                        if (matches.length > 0) {
+                            for (const match of matches) {
+                                if (match.innerText == "Something went wrong") {
+                                    console.log("Something went wrong");
+                                    observer.disconnect();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        observer.observe(document.body, { childList: true });
+                """
+        )
+
+        async def test(msg: ConsoleMessage):
+            print(msg.text)
+
+        page.on("console", test)
         await page.evaluate(
             """
 var down = true;
