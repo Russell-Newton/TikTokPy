@@ -1,3 +1,4 @@
+from typing import Literal
 from urllib.parse import quote, urlencode
 
 from playwright.async_api import BrowserContext as AsyncContext
@@ -7,6 +8,18 @@ from tiktokapipy.util.signing import (
     sign_and_get_request_async,
     sign_and_get_request_sync,
 )
+
+SUPPORTED_ENDPOINT = Literal[
+    "comment/list/",
+    "post/item_list/",
+    "challenge/item_list/",
+    "related/item_list/",
+    "item/detail/",
+    "challenge/detail/",
+    # "user/detail/", # TODO - User detail requires msToken, X-Bogus, and _signature
+    # "recommend/item_list/", # TODO - recommended list likely also requires msToken, X-Bogus, and _signature
+]
+
 
 TEMPLATE_QUERY_PARAMS_DICT = {
     "aid": 1988,
@@ -26,14 +39,19 @@ TEMPLATE_QUERY_PARAMS_DICT = {
 
 
 ENDPOINT_ID_MAP = {
-    "comment": "aweme_id",  # comment/list/
-    "post": "secUid",  # post/item_list/
-    "challenge": "challengeID",  # challenge/item_list/
-    "related": "itemID",  # related/item_list
+    "comment/list/": "aweme_id",
+    "post/item_list/": "secUid",
+    "challenge/item_list/": "challengeID",
+    "related/item_list/": "itemID",
+    "item/detail/": "itemId",
+    "challenge/detail/": "challengeID",
+    # "user/detail/": "secUid",
 }
 
 
-async def get_necessary_query_params_async(context: AsyncContext) -> str:
+async def get_necessary_query_params_async(
+    context: AsyncContext, **extra_params
+) -> str:
     """
     As of June 14, 2023, the following parameters are necessary to make comment API requests and don't seem to affect
     other API requests:
@@ -54,26 +72,38 @@ async def get_necessary_query_params_async(context: AsyncContext) -> str:
     * ``screen_height`` (can be 0)
     * ``screen_width`` (can be 0)
 
-    Unique to Comments:
+    Unique to Video Detail (item/detail/):
+    * ``itemId``=7244619447191735595
+        * Video ID
+    * ``cursor`` and ``count`` don't seem to affect
+
+    Unique to Challenge Detail (item/detail/):
+    * ``challengeID``=7228
+        * Challenge ID
+    * ``challengeName``=gym
+        * Also needed apparently
+    * ``cursor`` and ``count`` don't seem to affect
+
+    Unique to Comments (comment/list/):
     * ``aweme_id``=7244619447191735595
         * Video ID
     * ``cursor``=0
         * Index into list of comments
 
-    Unique to Related Videos:
+    Unique to Related Videos (related/item_list/):
     * ``itemID``=7244619447191735595
         * Video ID
     * ``cursor``=0
         * Index into list of related videos
 
-    Unique to User Posts:
+    Unique to User Posts (post/item_list/):
     * ``secUid``=MS4wLjABAAAAv7iSuuXDJGDvJkmH_vz1qkDZYo1apxgzaxdBSeIuPiM
         * User ID
     * ``cursor`` is a Unix Timestamp. The retrieved videos are the newest ``count`` since before said timestamp
     * Next ``cursor`` is provided in response
     * Requires msToken cookie(s)
 
-    Unique to Challenges:
+    Unique to Challenges (challenge/item_list/):
     * ``challengeID``=7882
         * Challenge ID
     * ``cursor``=0
@@ -91,10 +121,11 @@ async def get_necessary_query_params_async(context: AsyncContext) -> str:
         browser_name=browser_name,
         browser_version=browser_version,
     )
+    query.update(**extra_params)
     return urlencode(query)
 
 
-def get_necessary_query_params_sync(context: SyncContext) -> str:
+def get_necessary_query_params_sync(context: SyncContext, **extra_params) -> str:
     """
     As of June 14, 2023, the following parameters are necessary to make comment API requests and don't seem to affect
     other API requests:
@@ -115,26 +146,38 @@ def get_necessary_query_params_sync(context: SyncContext) -> str:
     * ``screen_height`` (can be 0)
     * ``screen_width`` (can be 0)
 
-    Unique to Comments:
+    Unique to Video Detail (item/detail/):
+    * ``itemId``=7244619447191735595
+        * Video ID
+    * ``cursor`` and ``count`` don't seem to affect
+
+    Unique to Challenge Detail (item/detail/):
+    * ``challengeID``=7228
+        * Challenge ID
+    * ``challengeName``=gym
+        * Also needed apparently
+    * ``cursor`` and ``count`` don't seem to affect
+
+    Unique to Comments (comment/list/):
     * ``aweme_id``=7244619447191735595
         * Video ID
     * ``cursor``=0
         * Index into list of comments
 
-    Unique to Related Videos:
+    Unique to Related Videos (related/item_list/):
     * ``itemID``=7244619447191735595
         * Video ID
     * ``cursor``=0
         * Index into list of related videos
 
-    Unique to User Posts:
+    Unique to User Posts (post/item_list/):
     * ``secUid``=MS4wLjABAAAAv7iSuuXDJGDvJkmH_vz1qkDZYo1apxgzaxdBSeIuPiM
         * User ID
     * ``cursor`` is a Unix Timestamp. The retrieved videos are the newest ``count`` since before said timestamp
     * Next ``cursor`` is provided in response
     * Requires msToken cookie(s)
 
-    Unique to Challenges:
+    Unique to Challenges (challenge/item_list/):
     * ``challengeID``=7882
         * Challenge ID
     * ``cursor``=0
@@ -152,20 +195,25 @@ def get_necessary_query_params_sync(context: SyncContext) -> str:
         browser_name=browser_name,
         browser_version=browser_version,
     )
+    query.update(**extra_params)
     return urlencode(query, quote_via=quote)
 
 
 def get_id_type(endpoint: str) -> str:
     for k, v in ENDPOINT_ID_MAP.items():
-        if k in endpoint:
+        if k == endpoint:
             return v
     raise TikTokAPIError(f"Unsupported endpoint: {endpoint}")
 
 
 async def make_request_async(
-    endpoint: str, cursor: int, target_id: int, context: AsyncContext
+    endpoint: SUPPORTED_ENDPOINT,
+    cursor: int,
+    target_id: int,
+    context: AsyncContext,
+    **extra_params,
 ) -> dict:
-    params = await get_necessary_query_params_async(context)
+    params = await get_necessary_query_params_async(context, **extra_params)
     id_type = get_id_type(endpoint)
     params += f"&cursor={cursor}&{id_type}={target_id}"
     return await sign_and_get_request_async(
@@ -174,9 +222,13 @@ async def make_request_async(
 
 
 def make_request_sync(
-    endpoint: str, cursor: int, target_id: int, context: SyncContext
+    endpoint: SUPPORTED_ENDPOINT,
+    cursor: int,
+    target_id: int,
+    context: SyncContext,
+    **extra_params,
 ) -> dict:
-    params = get_necessary_query_params_sync(context)
+    params = get_necessary_query_params_sync(context, **extra_params)
     id_type = get_id_type(endpoint)
     params += f"&cursor={cursor}&{id_type}={target_id}"
     return sign_and_get_request_sync(
