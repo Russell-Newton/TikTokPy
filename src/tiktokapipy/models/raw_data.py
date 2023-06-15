@@ -4,7 +4,7 @@ Unprocessed data retrieved directly from TikTok
 """
 
 import abc
-from typing import Dict, Generic, List, Optional, TypeVar, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.models.challenge import Challenge, ChallengeStats
@@ -36,19 +36,19 @@ class StatusPage(CamelCaseModel):
 class ChallengePage(StatusPage):
     """:autodoc-skip:"""
 
-    challenge_info: Optional[ChallengeInfo]
+    challenge_info: Optional[ChallengeInfo] = None
 
 
 class APIResponse(CamelCaseModel):
     """:autodoc-skip:"""
 
     status_code: int = 0
-    cursor: Optional[int]
+    cursor: Optional[int] = None
     has_more: Union[bool, int]
 
-    total: Optional[int]
-    comments: Optional[List[Comment]]
-    item_list: Optional[List[LightVideo]]
+    total: Optional[int] = None
+    comments: Optional[List[Comment]] = None
+    item_list: Optional[List[LightVideo]] = None
 
 
 class PrimaryResponseType(TitleCaseModel):
@@ -60,8 +60,8 @@ class PrimaryResponseType(TitleCaseModel):
 class ChallengeResponse(PrimaryResponseType):
     """:autodoc-skip:"""
 
-    item_module: Optional[Dict[int, LightVideo]]
-    challenge_page: ChallengePage
+    item_module: Optional[Dict[int, LightVideo]] = None
+    challenge_page: Optional[ChallengePage] = None
 
 
 DesktopResponseT = TypeVar("DesktopResponseT")
@@ -80,7 +80,7 @@ class MobileChallengeResponse(
 ):
     """:autodoc-skip:"""
 
-    mobile_item_module: Optional[Dict[int, LightVideo]]
+    mobile_item_module: Optional[Dict[int, LightVideo]] = None
     mobile_challenge_page: ChallengePage
 
     def to_desktop(self) -> ChallengeResponse:
@@ -93,17 +93,17 @@ class MobileChallengeResponse(
 class UserResponse(PrimaryResponseType):
     """:autodoc-skip:"""
 
-    item_module: Optional[Dict[int, LightVideo]]
-    user_module: Optional[UserModule]
+    item_module: Optional[Dict[int, LightVideo]] = None
+    user_module: Optional[UserModule] = None
     user_page: StatusPage
 
 
 class MobileUserResponse(PrimaryResponseType, MobileResponseMixin[UserResponse]):
     """:autodoc-skip:"""
 
-    mobile_item_module: Optional[Dict[int, LightVideo]]
+    mobile_item_module: Optional[Dict[int, LightVideo]] = None
     mobile_user_page: StatusPage
-    mobile_user_module: Optional[UserModule]
+    mobile_user_module: Optional[UserModule] = None
 
     def to_desktop(self) -> UserResponse:
         return UserResponse(
@@ -116,24 +116,33 @@ class MobileUserResponse(PrimaryResponseType, MobileResponseMixin[UserResponse])
 class VideoResponse(PrimaryResponseType):
     """:autodoc-skip:"""
 
-    item_module: Optional[Dict[int, Video]]
-    comment_item: Optional[Dict[int, Comment]]
+    item_module: Optional[Dict[int, Video]] = None
+    comment_item: Optional[Dict[int, Comment]] = None
     video_page: StatusPage
 
     # Preprocess to insert id if needed
     @classmethod
-    def parse_obj(cls, obj):
+    def model_validate(
+        cls,
+        obj,
+        *,
+        strict: Optional[bool] = None,
+        from_attributes: Optional[bool] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ):
         if "ItemModule" in obj:
             for key in obj["ItemModule"]:
                 obj["ItemModule"][key]["id"] = key
                 obj["ItemModule"][key]["video"]["id"] = key
-        return super().parse_obj(obj)
+        return super().model_validate(
+            obj, strict=strict, from_attributes=from_attributes, context=context
+        )
 
 
 class MobileVideoData(StatusPage):
     """:autodoc-skip:"""
 
-    item_info: Optional[Dict[str, Video]]
+    item_info: Optional[Dict[str, Video]] = None
 
 
 class MobileVideoModule(CamelCaseModel):

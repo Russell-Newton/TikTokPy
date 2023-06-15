@@ -578,7 +578,6 @@ async def sign_and_get_request_async(request: str, context: AsyncContext) -> dic
 
 
 def sign_and_get_request_sync(request: str, context: SyncContext) -> dict:
-    print(request)
     page = context.new_page()
     page.add_init_script(
         """
@@ -596,7 +595,6 @@ delete Object.getPrototypeOf(navigator).webdriver
     query = request.split("?")[1]
     x_bogus = page.evaluate(f'sign("{query}", navigator.userAgent)')
     signed = f"{request}&X-Bogus={x_bogus}"
-    print(signed)
     resp = page.goto(signed)
     json = resp.json()
     page.close()

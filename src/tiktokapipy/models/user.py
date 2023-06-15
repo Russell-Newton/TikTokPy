@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from functools import cached_property
+from typing import Any, AsyncIterator, ForwardRef, Iterator, Optional, Union
 from urllib.parse import quote
 
-from tiktokapipy.models import AsyncDeferredIterator, CamelCaseModel, DeferredIterator
+from pydantic import Field, computed_field
+from tiktokapipy import TikTokAPIError
+from tiktokapipy.models import CamelCaseModel
+from tiktokapipy.util.deferred_collectors import DeferredItemListIterator
+
+LightVideo = ForwardRef("LightVideo")
+Video = ForwardRef("Video")
 
 
 class BioLink(CamelCaseModel):
@@ -35,7 +42,7 @@ class User(LightUser):
     ##################
     # Identification #
     ##################
-    id: int
+    id: int = Field(aliases=["cid", "uid", "id"])
     """The User's unique id"""
     # short_id: Optional[str]
     nickname: str
@@ -45,8 +52,8 @@ class User(LightUser):
     # Security information #
     ########################
     sec_uid: str
-    private_account: Optional[bool]
-    verified: Optional[bool]
+    private_account: Optional[bool] = None
+    verified: Optional[bool] = None
     # secret: Optional[bool]
     # ftc: Optional[bool]
     # is_under_age_18: Optional[bool]
@@ -79,20 +86,37 @@ class User(LightUser):
     # room_id: Optional[str]
     # extra_info: Optional[dict]        # not sure what this is
 
-    stats: Optional[UserStats]
+    stats: Optional[UserStats] = None
     """Set on return from API. Contains user statistics."""
-    videos: Optional[
-        Union[
-            DeferredIterator[LightVideo, Video],
-            AsyncDeferredIterator[LightVideo, Video],
-        ]
-    ]
-    """Set on return from API. Can be iterated over to load :class:`.Video`s."""
+
+    @computed_field(repr=False)
+    @property
+    def _api(self) -> Any:
+        if not hasattr(self, "_api_internal"):
+            self._api_internal = None
+        return self._api_internal
+
+    @_api.setter
+    def _api(self, api):
+        self._api_internal = api
+
+    # TODO - Needs msToken cookies or something to work
+    @computed_field(repr=False)
+    @cached_property
+    def videos(self) -> Union[AsyncIterator[Video], Iterator[Video]]:
+        if self._api is None:
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to user._api before collecting videos"
+            )
+        return DeferredItemListIterator(self._api, "post", self.sec_uid)
+
+
+del LightVideo, Video
 
 
 from tiktokapipy.models.video import LightVideo, Video  # noqa E402
 
-User.update_forward_refs()
+User.model_rebuild()
 
 
 def user_link(user: Union[int, str]) -> str:

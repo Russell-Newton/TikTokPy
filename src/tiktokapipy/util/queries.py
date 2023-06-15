@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Union
 from urllib.parse import quote, urlencode
 
 from playwright.async_api import BrowserContext as AsyncContext
@@ -44,7 +44,7 @@ ENDPOINT_ID_MAP = {
     "challenge/item_list/": "challengeID",
     "related/item_list/": "itemID",
     "item/detail/": "itemId",
-    "challenge/detail/": "challengeID",
+    "challenge/detail/": "challengeName",
     # "user/detail/": "secUid",
 }
 
@@ -151,7 +151,7 @@ def get_necessary_query_params_sync(context: SyncContext, **extra_params) -> str
         * Video ID
     * ``cursor`` and ``count`` don't seem to affect
 
-    Unique to Challenge Detail (item/detail/):
+    Unique to Challenge Detail (challenge/detail/):
     * ``challengeID``=7228
         * Challenge ID
     * ``challengeName``=gym
@@ -209,7 +209,7 @@ def get_id_type(endpoint: str) -> str:
 async def make_request_async(
     endpoint: SUPPORTED_ENDPOINT,
     cursor: int,
-    target_id: int,
+    target_id: Union[int, str],
     context: AsyncContext,
     **extra_params,
 ) -> dict:
@@ -224,7 +224,7 @@ async def make_request_async(
 def make_request_sync(
     endpoint: SUPPORTED_ENDPOINT,
     cursor: int,
-    target_id: int,
+    target_id: Union[int, str],
     context: SyncContext,
     **extra_params,
 ) -> dict:
@@ -236,9 +236,19 @@ def make_request_sync(
     )
 
 
+def get_challenge_detail_sync(challenge_name: str, context: SyncContext):
+    return make_request_sync("challenge/detail/", 0, challenge_name, context)
+
+
+async def get_challenge_detail_async(challenge_name: str, context: SyncContext):
+    return await make_request_async("challenge/detail/", 0, challenge_name, context)
+
+
 __all__ = [
     "get_necessary_query_params_async",
     "get_necessary_query_params_sync",
     "make_request_async",
     "make_request_sync",
+    "get_challenge_detail_async",
+    "get_challenge_detail_sync",
 ]

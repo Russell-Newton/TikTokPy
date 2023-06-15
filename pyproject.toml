@@ -32,7 +32,7 @@ classifiers = [
 
 dependencies = [
     "playwright~=1.29",
-    "pydantic",
+    "pydantic>=2.0a1",
     "requests",
 ]
 

@@ -4,9 +4,16 @@ Challenge (Hashtag) data models
 
 from __future__ import annotations
 
-from typing import Optional, Union
+from functools import cached_property
+from typing import Any, AsyncIterator, ForwardRef, Iterator, Optional, Union
 
-from tiktokapipy.models import AsyncDeferredIterator, CamelCaseModel, DeferredIterator
+from pydantic import Field, computed_field
+from tiktokapipy import TikTokAPIError
+from tiktokapipy.models import CamelCaseModel
+from tiktokapipy.util.deferred_collectors import DeferredItemListIterator
+
+LightVideo = ForwardRef("LightVideo")
+Video = ForwardRef("Video")
 
 
 class ChallengeStats(CamelCaseModel):
@@ -25,25 +32,40 @@ class LightChallenge(CamelCaseModel):
 class Challenge(LightChallenge):
     """Challenge data"""
 
-    id: int
+    id: int = Field(aliases=["cid", "uid", "id"])
     """The Challenge's unique id"""
     desc: str
-    is_commerce: Optional[bool]
+    is_commerce: Optional[bool] = None
     """Presumably whether this challenge is sponsored."""
     stats: ChallengeStats
 
-    videos: Optional[
-        Union[
-            DeferredIterator[LightVideo, Video],
-            AsyncDeferredIterator[LightVideo, Video],
-        ]
-    ]
-    """Set on return from API. Can be iterated over to load :class:`.Video`s."""
+    @computed_field(repr=False)
+    @property
+    def _api(self) -> Any:
+        if not hasattr(self, "_api_internal"):
+            self._api_internal = None
+        return self._api_internal
+
+    @_api.setter
+    def _api(self, api):
+        self._api_internal = api
+
+    @computed_field(repr=False)
+    @cached_property
+    def videos(self) -> Union[AsyncIterator[Video], Iterator[Video]]:
+        if self._api is None:
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to challenge._api before collecting videos"
+            )
+        return DeferredItemListIterator(self._api, "challenge", self.id)
+
+
+del LightVideo, Video
 
 
 from tiktokapipy.models.video import LightVideo, Video  # noqa E402
 
-Challenge.update_forward_refs()
+Challenge.model_rebuild()
 
 
 def challenge_link(challenge: str) -> str:
