@@ -40,9 +40,6 @@ class TikTokAPI:
     def __init__(
         self,
         *,
-        scroll_down_time: float = 0,
-        scroll_down_delay: float = 1,
-        scroll_down_iter_delay: float = 0.2,
         headless: bool = None,
         data_dump_file: str = None,
         emulate_mobile: bool = False,
@@ -55,14 +52,6 @@ class TikTokAPI:
         **kwargs,
     ):
         """
-        :param scroll_down_time: How much time (in seconds) should the page navigation include scrolling down. This can
-            load more content from the page. This is the default time for all API calls. It can be overridden in each
-            call.
-        :param scroll_down_delay: How much time (in seconds) should pass before starting scrolling down. It is suggested
-            that this be more than 0, as no delay can result in API deadlocks on TikTok. Like ``scroll_down_time``, this
-            can be overridden in each call.
-        :param scroll_down_iter_delay: How much time (in seconds) should pass between scrolls. Like
-            ``scroll_down_time``, this can be overridden in each call.
         :param headless: Whether to use headless browsing.
         :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
             specify the name of the dump file (exluding '.json').
@@ -79,9 +68,6 @@ class TikTokAPI:
             For full details, see
             `BrowserType::launch() <https://playwright.dev/python/docs/api/class-browsertype#browser-type-launch>`_.
         """
-        self.default_scroll_down_time = scroll_down_time
-        self.default_scroll_down_delay = scroll_down_delay
-        self.default_scroll_down_iter_delay = scroll_down_iter_delay
         self.headless = headless
         self.data_dump_file = data_dump_file
         self.emulate_mobile = emulate_mobile
@@ -161,20 +147,12 @@ class TikTokAPI:
     def challenge(
         self,
         challenge_name: str,
-        video_limit: int = 0,
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> Challenge:
         """
         Retrieve data on a :class:`.Challenge` (hashtag) from TikTok. Only up to the ``video_limit`` most recent videos
         will be retrievable by the scraper.
 
         :param challenge_name: The name of the challenge. e.g.: ``"fyp"``
-        :param video_limit: The max number of recent videos to retrieve. Set to 0 for no limit
-        :param scroll_down_time: Optional override for value used in API constructor.
-        :param scroll_down_delay: Optional override for value used in API constructor.
-        :param scroll_down_iter_delay: Optional override for value used in API constructor.
         :return: A :class:`.Challenge` object containing the scraped data
         :rtype: :class:`.Challenge`
         """
@@ -186,20 +164,12 @@ class TikTokAPI:
     def user(
         self,
         user: Union[int, str],
-        video_limit: int = 0,
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> User:
         """
         Retrieve data on a :class:`.User` from TikTok. Only up to the ``video_limit`` most recent videos will be
         retrievable by the scraper.
 
         :param user: The unique user or id of the user. e.g.: for @tiktok, use ``"tiktok"``
-        :param video_limit: The max number of recent videos to retrieve. Set to 0 for no limit
-        :param scroll_down_time: Optional override for value used in API constructor.
-        :param scroll_down_delay: Optional override for value used in API constructor.
-        :param scroll_down_iter_delay: Optional override for value used in API constructor.
         :return: A :class:`.User` object containing the scraped data
         :rtype: :class:`.User`
         """
@@ -207,36 +177,24 @@ class TikTokAPI:
         response = self._scrape_data(
             link,
             self._user_response_type,
-            scroll_down_time,
-            scroll_down_delay,
-            scroll_down_iter_delay,
         )
         return self._extract_user_from_response(response)
 
     def video(
         self,
         link: str,
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> Video:
         """
         Retrieve data on a :class:`.Video` from TikTok. If the video is a slideshow, :attr:`.emulate_mobile` must be
         set to ``True`` at API initialization or this method will raise a :exc:`TikTokAPIError`.
 
         :param link: The link to the video. Can be found from a unique video id with :func:`.video_link`.
-        :param scroll_down_time: Optional override for value used in API constructor.
-        :param scroll_down_delay: Optional override for value used in API constructor.
-        :param scroll_down_iter_delay: Optional override for value used in API constructor.
         :return: A :class:`.Video` object containing the scraped data
         :rtype: :class:`.Video`
         """
         response = self._scrape_data(
             link,
             self._video_response_type,
-            scroll_down_time,
-            scroll_down_delay,
-            scroll_down_iter_delay,
         )
         return self._extract_video_from_response(response)
 
@@ -244,9 +202,6 @@ class TikTokAPI:
         self,
         link: str,
         data_model: Type[_DataModelT],
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> _DataModelT:
         for _ in range(self.navigation_retries + 1):
             self.context.clear_cookies()

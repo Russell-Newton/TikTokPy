@@ -57,9 +57,6 @@ class AsyncTikTokAPI(TikTokAPI):
         self,
         link: str,
         data_model: Type[_DataModelT],
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> _DataModelT:
         for _ in range(self.navigation_retries + 1):
             await self.context.clear_cookies()
@@ -108,10 +105,6 @@ if (navigator.webdriver === false) {
     async def challenge(
         self,
         challenge_name: str,
-        video_limit: int = 0,
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> Challenge:
         response = ChallengePage.model_validate(
             await get_challenge_detail_async(challenge_name, self.context)
@@ -121,34 +114,21 @@ if (navigator.webdriver === false) {
     async def user(
         self,
         user: str,
-        video_limit: int = 0,
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> User:
         link = user_link(user)
         response = await self._scrape_data(
             link,
             self._user_response_type,
-            scroll_down_time,
-            scroll_down_delay,
-            scroll_down_iter_delay,
         )
         return self._extract_user_from_response(response)
 
     async def video(
         self,
         link: str,
-        scroll_down_time: float = None,
-        scroll_down_delay: float = None,
-        scroll_down_iter_delay: float = None,
     ) -> Video:
         response = await self._scrape_data(
             link,
             self._video_response_type,
-            scroll_down_time,
-            scroll_down_delay,
-            scroll_down_iter_delay,
         )
         return self._extract_video_from_response(response)
 
