@@ -17,9 +17,9 @@ class DeferredIterator(abc.ABC):
     def __init__(self, api):
         self._api = api
         self._collected_values = []
-        self.head = 0
-        self.cursor = 0
-        self.has_more = True
+        self._head = 0
+        self._cursor = 0
+        self._has_more = True
 
     @abc.abstractmethod
     def fetch_sync(self):
@@ -34,7 +34,7 @@ class DeferredIterator(abc.ABC):
             raise TikTokAPIError(
                 "Attempting to use AsyncTikTokAPI in a synchronous context. Use `async for` instead."
             )
-        self.head = 0
+        self._head = 0
         return self
 
     def __next__(self):
@@ -42,12 +42,14 @@ class DeferredIterator(abc.ABC):
             raise TikTokAPIError(
                 "Attempting to use AsyncTikTokAPI in a synchronous context. Use `async for` instead."
             )
-        if self.head == len(self._collected_values):
-            if not self.has_more:
+
+        if self._head >= len(self._collected_values):
+            if not self._has_more:
                 raise StopIteration
             self.fetch_sync()
-        out = self._collected_values[self.head]
-        self.head += 1
+
+        out = self._collected_values[self._head]
+        self._head += 1
         return out
 
     def __aiter__(self):
@@ -55,7 +57,7 @@ class DeferredIterator(abc.ABC):
             raise TikTokAPIError(
                 "Attempting to use TikTokAPI in an asynchronous context. Use `for` instead."
             )
-        self.head = 0
+        self._head = 0
         return self
 
     async def __anext__(self):
@@ -63,13 +65,18 @@ class DeferredIterator(abc.ABC):
             raise TikTokAPIError(
                 "Attempting to use TikTokAPI in an asynchronous context. Use `for` instead."
             )
-        if self.head == len(self._collected_values):
-            if not self.has_more:
+
+        if self._head >= len(self._collected_values):
+            if not self._has_more:
                 raise StopAsyncIteration
             await self.fetch_async()
-        out = self._collected_values[self.head]
-        self.head += 1
+
+        out = self._collected_values[self._head]
+        self._head += 1
         return out
+
+    def __getitem__(self, item):
+        return self._collected_values[item]
 
 
 class DeferredCommentIterator(DeferredIterator):
