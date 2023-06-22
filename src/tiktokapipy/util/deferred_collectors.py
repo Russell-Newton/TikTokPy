@@ -88,27 +88,27 @@ class DeferredCommentIterator(DeferredIterator):
         from tiktokapipy.models.raw_data import APIResponse
 
         raw = make_request_sync(
-            "comment/list/", self.cursor, self._video_id, self._api.context
+            "comment/list/", self._cursor, self._video_id, self._api.context
         )
         converted = APIResponse.model_validate(raw)
         for comment in converted.comments:
             comment._api = self._api
         self.has_more = converted.has_more
         self._collected_values += converted.comments
-        self.cursor = converted.cursor
+        self._cursor = converted.cursor
 
     async def fetch_async(self):
         from tiktokapipy.models.raw_data import APIResponse
 
         raw = await make_request_async(
-            "comment/list/", self.cursor, self._video_id, self._api.context
+            "comment/list/", self._cursor, self._video_id, self._api.context
         )
         converted = APIResponse.model_validate(raw)
         for comment in converted.comments:
             comment._api = self._api
         self.has_more = converted.has_more
         self._collected_values += converted.comments
-        self.cursor = converted.cursor
+        self._cursor = converted.cursor
 
 
 class DeferredItemListIterator(DeferredIterator):
@@ -125,7 +125,7 @@ class DeferredItemListIterator(DeferredIterator):
         self._extra_params = extra_params
 
         if self.from_type == "post":
-            self.cursor = int(time.time()) * 1000
+            self._cursor = int(time.time()) * 1000
 
     def fetch_sync(self):
         from tiktokapipy.models.raw_data import APIResponse
@@ -133,7 +133,7 @@ class DeferredItemListIterator(DeferredIterator):
         # noinspection PyTypeChecker
         raw = make_request_sync(
             f"{self.from_type}/item_list/",
-            self.cursor,
+            self._cursor,
             self._target_id,
             self._api.context,
             **self._extra_params,
@@ -143,7 +143,7 @@ class DeferredItemListIterator(DeferredIterator):
             item._api = self._api
         self.has_more = converted.has_more
         self._collected_values += converted.item_list
-        self.cursor = converted.cursor
+        self._cursor = converted.cursor
 
     async def fetch_async(self):
         from tiktokapipy.models.raw_data import APIResponse
@@ -151,7 +151,7 @@ class DeferredItemListIterator(DeferredIterator):
         # noinspection PyTypeChecker
         raw = await make_request_async(
             f"{self.from_type}/item_list/",
-            self.cursor,
+            self._cursor,
             self._target_id,
             self._api.context,
             **self._extra_params,
@@ -161,7 +161,7 @@ class DeferredItemListIterator(DeferredIterator):
             item._api = self._api
         self.has_more = converted.has_more
         self._collected_values += converted.item_list
-        self.cursor = converted.cursor
+        self._cursor = converted.cursor
 
 
 class DeferredChallengeIterator:
