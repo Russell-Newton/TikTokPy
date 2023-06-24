@@ -4,17 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from functools import cached_property
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    ForwardRef,
-    Iterator,
-    List,
-    Optional,
-    Union,
-)
+from typing import Any, ForwardRef, List, Optional, Union
 
 from playwright.async_api import BrowserContext
 from pydantic import Field, computed_field
@@ -77,8 +67,8 @@ class VideoData(CamelCaseModel):
     cover: str
     origin_cover: str
     dynamic_cover: str
-    share_cover: List[str]
-    reflow_cover: str
+    share_cover: Optional[List[str]] = None
+    reflow_cover: Optional[str] = None
 
     ###############
     # Video links #
@@ -228,7 +218,7 @@ class Video(LightVideo):
 
     @computed_field(repr=False)
     @cached_property
-    def comments(self) -> Union[AsyncIterator[Comment], Iterator[Comment]]:
+    def comments(self) -> DeferredCommentIterator:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to video._api before collecting comments"
@@ -237,18 +227,21 @@ class Video(LightVideo):
 
     @computed_field(repr=False)
     @cached_property
-    def tags(self) -> Union[AsyncIterator[Challenge], Iterator[Challenge]]:
+    def tags(self) -> DeferredChallengeIterator:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to video._api before collecting comments"
             )
         return DeferredChallengeIterator(
-            self._api, [challenge.title for challenge in self.challenges]
+            self._api,
+            [challenge.title for challenge in self.challenges]
+            if self.challenges
+            else [],
         )
 
     @computed_field(repr=False)
     @cached_property
-    def creator(self) -> Callable[[], Union[User, Awaitable[User]]]:
+    def creator(self) -> Union[AsyncDeferredUserGetter, SyncDeferredUserGetter]:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to video._api before retrieving creator data"

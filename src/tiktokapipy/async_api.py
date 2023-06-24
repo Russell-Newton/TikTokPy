@@ -6,17 +6,22 @@ from __future__ import annotations
 
 import traceback
 import warnings
-from typing import Type, TypeVar
+from typing import Type, TypeVar, Union
 
 from playwright.async_api import Page, TimeoutError, async_playwright
 from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.api import TikTokAPI
 from tiktokapipy.models.challenge import Challenge
-from tiktokapipy.models.raw_data import ChallengePage, PrimaryResponseType
+from tiktokapipy.models.raw_data import (
+    ChallengePage,
+    PrimaryResponseType,
+    UserResponse,
+    VideoPage,
+)
 from tiktokapipy.models.user import User, user_link
 from tiktokapipy.models.video import Video
-from tiktokapipy.util.queries import get_challenge_detail_async
+from tiktokapipy.util.queries import get_challenge_detail_async, get_video_detail_async
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """
@@ -37,11 +42,7 @@ class AsyncTikTokAPI(TikTokAPI):
         )
 
         context_kwargs = self.context_kwargs
-
-        if self.emulate_mobile:
-            context_kwargs.update(self.playwright.devices["iPhone 12"])
-        else:
-            context_kwargs.update(self.playwright.devices["Desktop Edge"])
+        context_kwargs.update(self.playwright.devices["Desktop Edge"])
 
         self._context = await self.browser.new_context(**context_kwargs)
         self.context.set_default_navigation_timeout(self.navigation_timeout)
@@ -103,32 +104,36 @@ if (navigator.webdriver === false) {
         return data
 
     async def challenge(
-        self,
-        challenge_name: str,
+        self, challenge_name: str, *, video_limit: int = -1
     ) -> Challenge:
         response = ChallengePage.model_validate(
             await get_challenge_detail_async(challenge_name, self.context)
         )
-        return self._extract_challenge_from_response(response)
+        challenge = self._extract_challenge_from_response(response)
+        challenge.videos.limit(video_limit)
+        return challenge
 
-    async def user(
-        self,
-        user: str,
-    ) -> User:
+    async def user(self, user: str, *, video_limit: int = -1) -> User:
         link = user_link(user)
         response = await self._scrape_data(
             link,
-            self._user_response_type,
+            UserResponse,
         )
-        return self._extract_user_from_response(response)
+        user = self._extract_user_from_response(response)
+        user.videos.limit(video_limit)
+        return user
 
     async def video(
         self,
-        link: str,
+        link_or_id: Union[int, str],
     ) -> Video:
-        response = await self._scrape_data(
-            link,
-            self._video_response_type,
+        if isinstance(link_or_id, str):
+            video_id = link_or_id.split("/")[-1].split("?")[0]
+        else:
+            video_id = link_or_id
+
+        response = VideoPage.model_validate(
+            await get_video_detail_async(video_id, self.context)
         )
         return self._extract_video_from_response(response)
 

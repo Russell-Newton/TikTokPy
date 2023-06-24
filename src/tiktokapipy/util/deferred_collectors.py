@@ -1,6 +1,6 @@
 import abc
 import time
-from typing import List, Literal, Union
+from typing import AsyncIterator, ForwardRef, Iterator, List, Literal, TypeVar, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
 from playwright.sync_api import BrowserContext as SyncBrowserContext
@@ -12,14 +12,19 @@ from tiktokapipy.util.queries import (
     make_request_sync,
 )
 
+T = TypeVar("T")
+Comment = ForwardRef("Comment")
+Video = ForwardRef("Video")
 
-class DeferredIterator(abc.ABC):
+
+class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
     def __init__(self, api):
         self._api = api
         self._collected_values = []
         self._head = 0
         self._cursor = 0
         self._has_more = True
+        self._limit = -1
 
     @abc.abstractmethod
     def fetch_sync(self):
@@ -43,10 +48,17 @@ class DeferredIterator(abc.ABC):
                 "Attempting to use AsyncTikTokAPI in a synchronous context. Use `async for` instead."
             )
 
+        if 0 <= self._limit <= self._head:
+            raise StopIteration
+
         if self._head >= len(self._collected_values):
             if not self._has_more:
                 raise StopIteration
             self.fetch_sync()
+
+        if len(self._collected_values) > self._limit:
+            self._collected_values = self._collected_values[: self._limit]
+            self._has_more = False
 
         out = self._collected_values[self._head]
         self._head += 1
@@ -66,10 +78,17 @@ class DeferredIterator(abc.ABC):
                 "Attempting to use TikTokAPI in an asynchronous context. Use `for` instead."
             )
 
+        if 0 <= self._limit <= self._head:
+            raise StopAsyncIteration
+
         if self._head >= len(self._collected_values):
             if not self._has_more:
                 raise StopAsyncIteration
             await self.fetch_async()
+
+        if len(self._collected_values) > self._limit:
+            self._collected_values = self._collected_values[: self._limit]
+            self._has_more = False
 
         out = self._collected_values[self._head]
         self._head += 1
@@ -78,8 +97,18 @@ class DeferredIterator(abc.ABC):
     def __getitem__(self, item):
         return self._collected_values[item]
 
+    def limit(self, limit: int):
+        if limit < 0:
+            self._limit = -1
+            return self
+        self._limit = limit
+        if len(self._collected_values) > self._limit:
+            self._collected_values = self._collected_values[: self._limit]
+            self._has_more = False
+        return self
 
-class DeferredCommentIterator(DeferredIterator):
+
+class DeferredCommentIterator(DeferredIterator[Comment]):
     def __init__(self, api, video_id: int):
         super().__init__(api)
         self._video_id = video_id
@@ -111,7 +140,7 @@ class DeferredCommentIterator(DeferredIterator):
         self._cursor = converted.cursor
 
 
-class DeferredItemListIterator(DeferredIterator):
+class DeferredItemListIterator(DeferredIterator[Video]):
     def __init__(
         self,
         api,
@@ -233,7 +262,7 @@ class DeferredChallengeIterator:
             )
         if self.head == len(self._collected_values):
             if self.head == len(self._challenge_names):
-                raise StopIteration
+                raise StopAsyncIteration
             await self.fetch_async()
         out = self._collected_values[self.head]
         self.head += 1

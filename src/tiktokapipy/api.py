@@ -15,18 +15,13 @@ from tiktokapipy import ERROR_CODES, TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.models.challenge import Challenge
 from tiktokapipy.models.raw_data import (
     ChallengePage,
-    ChallengeResponse,
-    MobileChallengeResponse,
-    MobileResponseMixin,
-    MobileUserResponse,
-    MobileVideoResponse,
     PrimaryResponseType,
     UserResponse,
-    VideoResponse,
+    VideoPage,
 )
 from tiktokapipy.models.user import User, user_link
 from tiktokapipy.models.video import Video
-from tiktokapipy.util.queries import get_challenge_detail_sync
+from tiktokapipy.util.queries import get_challenge_detail_sync, get_video_detail_sync
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """
@@ -42,7 +37,6 @@ class TikTokAPI:
         *,
         headless: bool = None,
         data_dump_file: str = None,
-        emulate_mobile: bool = False,
         navigation_timeout: float = 30,
         navigation_retries: int = 0,
         context_kwargs: dict = None,
@@ -54,9 +48,7 @@ class TikTokAPI:
         """
         :param headless: Whether to use headless browsing.
         :param data_dump_file: If the data scraped from TikTok should also be dumped to a JSON file before parsing,
-            specify the name of the dump file (exluding '.json').
-        :param emulate_mobile: Whether to emulate a mobile device during sraping. Required for retrieving data
-            on slideshows.
+            specify the name of the dump file (excluding '.json').
         :param navigation_timeout: How long (in milliseconds) page navigation should wait before timing out. Set to 0 to
             disable the timeout.
         :param navigation_retries: How many times to retry navigation if ``network_timeout`` is exceeded. Set to 0 to
@@ -70,7 +62,6 @@ class TikTokAPI:
         """
         self.headless = headless
         self.data_dump_file = data_dump_file
-        self.emulate_mobile = emulate_mobile
         self.context_kwargs = context_kwargs or {}
         self.navigation_timeout = navigation_timeout * 1000
         self.navigation_retries = navigation_retries
@@ -89,11 +80,7 @@ class TikTokAPI:
         )
 
         context_kwargs = self.context_kwargs
-
-        if self.emulate_mobile:
-            context_kwargs.update(self.playwright.devices["iPhone 12"])
-        else:
-            context_kwargs.update(self.playwright.devices["Desktop Edge"])
+        context_kwargs.update(self.playwright.devices["Desktop Edge"])
 
         self._context = self.browser.new_context(**context_kwargs)
         self.context.set_default_navigation_timeout(self.navigation_timeout)
@@ -126,28 +113,7 @@ class TikTokAPI:
             raise TikTokAPIError("TikTokAPI must be used as a context manager")
         return self._context
 
-    @property
-    def _challenge_response_type(self):
-        if self.emulate_mobile:
-            return MobileChallengeResponse
-        return ChallengeResponse
-
-    @property
-    def _user_response_type(self):
-        if self.emulate_mobile:
-            return MobileUserResponse
-        return UserResponse
-
-    @property
-    def _video_response_type(self):
-        if self.emulate_mobile:
-            return MobileVideoResponse
-        return VideoResponse
-
-    def challenge(
-        self,
-        challenge_name: str,
-    ) -> Challenge:
+    def challenge(self, challenge_name: str, *, video_limit: int = -1) -> Challenge:
         """
         Retrieve data on a :class:`.Challenge` (hashtag) from TikTok. Only up to the ``video_limit`` most recent videos
         will be retrievable by the scraper.
@@ -159,12 +125,11 @@ class TikTokAPI:
         response = ChallengePage.model_validate(
             get_challenge_detail_sync(challenge_name, self.context)
         )
-        return self._extract_challenge_from_response(response)
+        challenge = self._extract_challenge_from_response(response)
+        challenge.videos.limit(video_limit)
+        return challenge
 
-    def user(
-        self,
-        user: Union[int, str],
-    ) -> User:
+    def user(self, user: Union[int, str], *, video_limit: int = -1) -> User:
         """
         Retrieve data on a :class:`.User` from TikTok. Only up to the ``video_limit`` most recent videos will be
         retrievable by the scraper.
@@ -176,25 +141,31 @@ class TikTokAPI:
         link = user_link(user)
         response = self._scrape_data(
             link,
-            self._user_response_type,
+            UserResponse,
         )
-        return self._extract_user_from_response(response)
+        user = self._extract_user_from_response(response)
+        user.videos.limit(video_limit)
+        return user
 
     def video(
         self,
-        link: str,
+        link_or_id: Union[int, str],
     ) -> Video:
         """
         Retrieve data on a :class:`.Video` from TikTok. If the video is a slideshow, :attr:`.emulate_mobile` must be
         set to ``True`` at API initialization or this method will raise a :exc:`TikTokAPIError`.
 
-        :param link: The link to the video. Can be found from a unique video id with :func:`.video_link`.
+        :param link_or_id: The link to the video or its unique ID.
         :return: A :class:`.Video` object containing the scraped data
         :rtype: :class:`.Video`
         """
-        response = self._scrape_data(
-            link,
-            self._video_response_type,
+        if isinstance(link_or_id, str):
+            video_id = link_or_id.split("/")[-1].split("?")[0]
+        else:
+            video_id = link_or_id
+
+        response = VideoPage.model_validate(
+            get_video_detail_sync(video_id, self.context)
         )
         return self._extract_video_from_response(response)
 
@@ -261,8 +232,6 @@ if (navigator.webdriver === false) {
                 json.dump(j, f, indent=2)
 
         parsed = data_model.model_validate_json(data)
-        if isinstance(parsed, MobileResponseMixin):
-            parsed = parsed.to_desktop()
         return parsed
 
     def _extract_challenge_from_response(
@@ -272,7 +241,7 @@ if (navigator.webdriver === false) {
         if response.status_code:
             raise TikTokAPIError(
                 f"Error in challenge extraction: status code {response.status_code} "
-                f"({ERROR_CODES[response.user_page.status_code]})"
+                f"({ERROR_CODES[response.status_code]})"
             )
         challenge = response.challenge_info.challenge
         challenge.stats = response.challenge_info.stats
@@ -282,7 +251,7 @@ if (navigator.webdriver === false) {
 
     def _extract_user_from_response(
         self,
-        response: Union[UserResponse, MobileUserResponse],
+        response: UserResponse,
     ):
         if response.user_page.status_code:
             raise TikTokAPIError(
@@ -297,14 +266,14 @@ if (navigator.webdriver === false) {
 
     def _extract_video_from_response(
         self,
-        response: Union[VideoResponse, MobileVideoResponse],
+        response: VideoPage,
     ):
-        if response.video_page.status_code:
+        if response.status_code:
             raise TikTokAPIError(
-                f"Error in video extraction: status code {response.video_page.status_code} "
-                f"({ERROR_CODES[response.user_page.status_code]})"
+                f"Error in video extraction: status code {response.status_code} "
+                f"({ERROR_CODES[response.status_code]})"
             )
-        video = list(response.item_module.values())[0]
+        video = response.item_info.video
         video._api = self
 
         return video

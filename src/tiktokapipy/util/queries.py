@@ -236,12 +236,20 @@ def make_request_sync(
     )
 
 
+async def get_challenge_detail_async(challenge_name: str, context: AsyncContext):
+    return await make_request_async("challenge/detail/", 0, challenge_name, context)
+
+
 def get_challenge_detail_sync(challenge_name: str, context: SyncContext):
     return make_request_sync("challenge/detail/", 0, challenge_name, context)
 
 
-async def get_challenge_detail_async(challenge_name: str, context: SyncContext):
-    return await make_request_async("challenge/detail/", 0, challenge_name, context)
+def get_video_detail_sync(video_id: int, context: SyncContext):
+    return make_request_sync("item/detail/", 0, video_id, context)
+
+
+async def get_video_detail_async(video_id: int, context: AsyncContext):
+    return await make_request_async("item/detail/", 0, video_id, context)
 
 
 __all__ = [
@@ -251,4 +259,6 @@ __all__ = [
     "make_request_sync",
     "get_challenge_detail_async",
     "get_challenge_detail_sync",
+    "get_video_detail_async",
+    "get_video_detail_sync",
 ]

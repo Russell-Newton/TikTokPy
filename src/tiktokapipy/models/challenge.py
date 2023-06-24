@@ -5,7 +5,7 @@ Challenge (Hashtag) data models
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, AsyncIterator, ForwardRef, Iterator, Optional, Union
+from typing import Any, ForwardRef, Optional
 
 from pydantic import Field, computed_field
 from tiktokapipy import TikTokAPIError
@@ -52,7 +52,7 @@ class Challenge(LightChallenge):
 
     @computed_field(repr=False)
     @cached_property
-    def videos(self) -> Union[AsyncIterator[Video], Iterator[Video]]:
+    def videos(self) -> DeferredItemListIterator:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to challenge._api before collecting videos"

@@ -3,9 +3,9 @@ Unprocessed data retrieved directly from TikTok
 :autodoc-skip:
 """
 
-import abc
-from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
+from typing import Any, Dict, List, Optional, TypeVar, Union
 
+from pydantic import Field
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.models.challenge import Challenge, ChallengeStats
 from tiktokapipy.models.comment import Comment
@@ -39,6 +39,18 @@ class ChallengePage(StatusPage):
     challenge_info: Optional[ChallengeInfo] = None
 
 
+class VideoInfo(CamelCaseModel):
+    """:autodoc-skip:"""
+
+    video: Video = Field(alias="itemStruct")
+
+
+class VideoPage(StatusPage):
+    """:autodoc-skip:"""
+
+    item_info: VideoInfo
+
+
 class APIResponse(CamelCaseModel):
     """:autodoc-skip:"""
 
@@ -67,50 +79,12 @@ class ChallengeResponse(PrimaryResponseType):
 DesktopResponseT = TypeVar("DesktopResponseT")
 
 
-class MobileResponseMixin(abc.ABC, Generic[DesktopResponseT]):
-    """:autodoc-skip:"""
-
-    @abc.abstractmethod
-    def to_desktop(self) -> DesktopResponseT:
-        pass
-
-
-class MobileChallengeResponse(
-    PrimaryResponseType, MobileResponseMixin[ChallengeResponse]
-):
-    """:autodoc-skip:"""
-
-    mobile_item_module: Optional[Dict[int, LightVideo]] = None
-    mobile_challenge_page: ChallengePage
-
-    def to_desktop(self) -> ChallengeResponse:
-        return ChallengeResponse(
-            item_module=self.mobile_item_module,
-            challenge_page=self.mobile_challenge_page,
-        )
-
-
 class UserResponse(PrimaryResponseType):
     """:autodoc-skip:"""
 
     item_module: Optional[Dict[int, LightVideo]] = None
     user_module: Optional[UserModule] = None
     user_page: StatusPage
-
-
-class MobileUserResponse(PrimaryResponseType, MobileResponseMixin[UserResponse]):
-    """:autodoc-skip:"""
-
-    mobile_item_module: Optional[Dict[int, LightVideo]] = None
-    mobile_user_page: StatusPage
-    mobile_user_module: Optional[UserModule] = None
-
-    def to_desktop(self) -> UserResponse:
-        return UserResponse(
-            item_module=self.mobile_item_module,
-            user_page=self.mobile_user_page,
-            user_module=self.mobile_user_module,
-        )
 
 
 class VideoResponse(PrimaryResponseType):
@@ -136,39 +110,4 @@ class VideoResponse(PrimaryResponseType):
                 obj["ItemModule"][key]["video"]["id"] = key
         return super().model_validate(
             obj, strict=strict, from_attributes=from_attributes, context=context
-        )
-
-
-class MobileVideoData(StatusPage):
-    """:autodoc-skip:"""
-
-    item_info: Optional[Dict[str, Video]] = None
-
-
-class MobileVideoModule(CamelCaseModel):
-    """:autodoc-skip:"""
-
-    video_data: MobileVideoData
-
-
-class MobileVideoResponse(PrimaryResponseType, MobileResponseMixin[VideoResponse]):
-    """:autodoc-skip:"""
-
-    sharing_video_module: MobileVideoModule
-    mobile_sharing_comment: APIResponse
-
-    def to_desktop(self) -> VideoResponse:
-        return VideoResponse(
-            item_module={
-                i: v
-                for i, v in enumerate(
-                    self.sharing_video_module.video_data.item_info.values()
-                )
-            },
-            comment_item={
-                comment.id: comment for comment in self.mobile_sharing_comment.comments
-            },
-            video_page=StatusPage(
-                status_code=self.sharing_video_module.video_data.status_code
-            ),
         )

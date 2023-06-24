@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, AsyncIterator, ForwardRef, Iterator, Optional, Union
+from typing import Any, ForwardRef, Optional, Union
 from urllib.parse import quote
 
 from pydantic import Field, computed_field
@@ -103,7 +103,7 @@ class User(LightUser):
     # TODO - Needs msToken cookies or something to work
     @computed_field(repr=False)
     @cached_property
-    def videos(self) -> Union[AsyncIterator[Video], Iterator[Video]]:
+    def videos(self) -> DeferredItemListIterator:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to user._api before collecting videos"
