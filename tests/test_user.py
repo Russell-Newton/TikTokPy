@@ -1,7 +1,5 @@
 import pytest
 
-pytest.skip("User scraping isn't working at the moment", allow_module_level=True)
-
 
 async def test_user_async(async_api, user_name):
     user = await async_api.user(user_name, video_limit=2)

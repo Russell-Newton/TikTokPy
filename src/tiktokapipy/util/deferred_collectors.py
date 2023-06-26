@@ -171,7 +171,9 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         for item in converted.item_list:
             item._api = self._api
         self.has_more = converted.has_more
-        self._collected_values += converted.item_list
+        self._collected_values += [
+            self._api.video(video.id) for video in converted.item_list
+        ]
         self._cursor = converted.cursor
 
     async def fetch_async(self):
@@ -189,7 +191,9 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         for item in converted.item_list:
             item._api = self._api
         self.has_more = converted.has_more
-        self._collected_values += converted.item_list
+        self._collected_values += [
+            await self._api.video(video.id) for video in converted.item_list
+        ]
         self._cursor = converted.cursor
 
 
