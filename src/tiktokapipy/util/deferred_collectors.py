@@ -292,7 +292,10 @@ class DeferredUserGetterSync:
         self._user = None
 
     def __call__(self) -> User:
-        """Get the User"""
+        if isinstance(self._api.context, SyncBrowserContext):
+            raise TikTokAPIError(
+                "Attempting to use TikTokAPI in an asynchronous context."
+            )
         if self._user is None:
             self._user = self._api.user(self._unique_id)
             self._user._api = self._api
@@ -306,7 +309,10 @@ class DeferredUserGetterAsync:
         self._user = None
 
     async def __call__(self) -> User:
-        """Get the User"""
+        if isinstance(self._api.context, SyncBrowserContext):
+            raise TikTokAPIError(
+                "Attempting to use TikTokAPI in a asynchronous context."
+            )
         if self._user is None:
             self._user = await self._api.user(self._unique_id)
             self._user._api = self._api
