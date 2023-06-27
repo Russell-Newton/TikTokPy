@@ -11,10 +11,10 @@ from pydantic import Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.util.deferred_collectors import (
-    AsyncDeferredUserGetter,
     DeferredChallengeIterator,
     DeferredCommentIterator,
-    SyncDeferredUserGetter,
+    DeferredUserGetterAsync,
+    DeferredUserGetterSync,
 )
 
 LightChallenge = ForwardRef("LightChallenge")
@@ -241,7 +241,7 @@ class Video(LightVideo):
 
     @computed_field(repr=False)
     @cached_property
-    def creator(self) -> Union[AsyncDeferredUserGetter, SyncDeferredUserGetter]:
+    def creator(self) -> Union[DeferredUserGetterAsync, DeferredUserGetterSync]:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to video._api before retrieving creator data"
@@ -250,9 +250,9 @@ class Video(LightVideo):
             self.author if isinstance(self.author, str) else self.author.unique_id
         )
         if isinstance(self._api.context, BrowserContext):
-            return AsyncDeferredUserGetter(self._api, unique_id)
+            return DeferredUserGetterAsync(self._api, unique_id)
         else:
-            return SyncDeferredUserGetter(self._api, unique_id)
+            return DeferredUserGetterSync(self._api, unique_id)
 
 
 del Challenge, LightChallenge, Comment, LightUser, User, UserStats

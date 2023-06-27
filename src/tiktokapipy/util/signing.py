@@ -1,7 +1,6 @@
 from json import JSONDecodeError
 
 from playwright.async_api import BrowserContext as AsyncContext
-from playwright.async_api import Route as AsyncRoute
 from playwright.sync_api import BrowserContext as SyncContext
 
 # Thank you to https://github.com/aithedev/X-Bogus
@@ -568,13 +567,10 @@ function sign(e, b) {
 """
 
 
-async def ignore_script_route_async(route: AsyncRoute):
-    if route.request.resource_type == "script":
-        return await route.abort()
-    return await route.continue_()
-
-
 async def sign_and_get_request_async(request: str, context: AsyncContext) -> dict:
+    """
+    :autodoc-skip:
+    """
     page = await context.new_page()
     await page.add_init_script(
         """

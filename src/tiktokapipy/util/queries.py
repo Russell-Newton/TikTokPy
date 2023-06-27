@@ -1,3 +1,8 @@
+"""
+API Queries
+:autodoc-skip:
+"""
+
 from typing import Literal, Union
 from urllib.parse import quote, urlencode
 
@@ -49,69 +54,63 @@ ENDPOINT_ID_MAP = {
 }
 
 
+# As of June 14, 2023, the following parameters are necessary to make comment API requests and don't seem to affect
+# other API requests:
+#
+# * ``aid`` = 1988
+# * ``app_name`` = tiktok_web
+# * ``browser_language`` = en-US
+# * ``browser_name`` = Mozilla
+# * ``browser_platform`` = Win32
+# * ``browser_version`` = Rest of UserAgent
+# * ``count`` = 20
+# * ``device_id`` (empty, but needed)
+# * ``device_platform`` = web_pc
+# * ``os`` = windows
+# * ``priority_region`` (empty, but needed)
+# * ``referer`` (empty, but needed)
+# * ``region`` = US
+# * ``screen_height`` (can be 0)
+# * ``screen_width`` (can be 0)
+#
+# Unique to Video Detail (item/detail/):
+# * ``itemId``
+# * ``cursor`` and ``count`` don't seem to affect
+#
+# Unique to Challenge Detail (item/detail/):
+# * ``challengeID``
+# * ``challengeName``
+# * ``cursor`` and ``count`` don't seem to affect
+#
+# Unique to Comments (comment/list/):
+# * ``aweme_id``
+# * ``cursor``
+#
+# Unique to Related Videos (related/item_list/):
+# * ``itemID``
+# * ``cursor``
+#
+# Unique to User Posts (post/item_list/):
+# * ``secUid``
+# * ``cursor`` is a Unix Timestamp. The retrieved videos are the newest ``count`` since before said timestamp
+# * Next ``cursor`` is provided in response
+# * Requires msToken cookie(s)
+#
+# Unique to Challenges (challenge/item_list/):
+# * ``challengeID``
+# * ``cursor``
+#
+
+
 async def get_necessary_query_params_async(
     context: AsyncContext, **extra_params
 ) -> str:
     """
-    As of June 14, 2023, the following parameters are necessary to make comment API requests and don't seem to affect
-    other API requests:
-
-    * ``aid``=1988
-    * ``app_name``=tiktok_web
-    * ``browser_language``=en-US
-    * ``browser_name``=Mozilla
-    * ``browser_platform``=Win32
-    * ``browser_version``=Rest of UserAgent
-    * ``count``=20
-    * ``device_id`` (empty, but needed)
-    * ``device_platform``=web_pc
-    * ``os``=windows
-    * ``priority_region`` (empty, but needed)
-    * ``referer`` (empty, but needed)
-    * ``region``=US
-    * ``screen_height`` (can be 0)
-    * ``screen_width`` (can be 0)
-
-    Unique to Video Detail (item/detail/):
-    * ``itemId``=7244619447191735595
-        * Video ID
-    * ``cursor`` and ``count`` don't seem to affect
-
-    Unique to Challenge Detail (item/detail/):
-    * ``challengeID``=7228
-        * Challenge ID
-    * ``challengeName``=gym
-        * Also needed apparently
-    * ``cursor`` and ``count`` don't seem to affect
-
-    Unique to Comments (comment/list/):
-    * ``aweme_id``=7244619447191735595
-        * Video ID
-    * ``cursor``=0
-        * Index into list of comments
-
-    Unique to Related Videos (related/item_list/):
-    * ``itemID``=7244619447191735595
-        * Video ID
-    * ``cursor``=0
-        * Index into list of related videos
-
-    Unique to User Posts (post/item_list/):
-    * ``secUid``=MS4wLjABAAAAv7iSuuXDJGDvJkmH_vz1qkDZYo1apxgzaxdBSeIuPiM
-        * User ID
-    * ``cursor`` is a Unix Timestamp. The retrieved videos are the newest ``count`` since before said timestamp
-    * Next ``cursor`` is provided in response
-    * Requires msToken cookie(s)
-
-    Unique to Challenges (challenge/item_list/):
-    * ``challengeID``=7882
-        * Challenge ID
-    * ``cursor``=0
-        * Index into list of posts (sorted by popularity)
 
     :param context: Playwright Context retrieved from :class:`.AsyncTikTokAPI` with ``api.context``
     :return: a paramstring containing query parameters necessary for all API calls
     """
+
     page = await context.new_page()
     agent: str = await page.evaluate("navigator.userAgent")
     await page.close()
@@ -127,65 +126,10 @@ async def get_necessary_query_params_async(
 
 def get_necessary_query_params_sync(context: SyncContext, **extra_params) -> str:
     """
-    As of June 14, 2023, the following parameters are necessary to make comment API requests and don't seem to affect
-    other API requests:
-
-    * ``aid``=1988
-    * ``app_name``=tiktok_web
-    * ``browser_language``=en-US
-    * ``browser_name``=Mozilla
-    * ``browser_platform``=Win32
-    * ``browser_version``=Rest of UserAgent
-    * ``count``=20
-    * ``device_id`` (empty, but needed)
-    * ``device_platform``=web_pc
-    * ``os``=windows
-    * ``priority_region`` (empty, but needed)
-    * ``referer`` (empty, but needed)
-    * ``region``=US
-    * ``screen_height`` (can be 0)
-    * ``screen_width`` (can be 0)
-
-    Unique to Video Detail (item/detail/):
-    * ``itemId``=7244619447191735595
-        * Video ID
-    * ``cursor`` and ``count`` don't seem to affect
-
-    Unique to Challenge Detail (challenge/detail/):
-    * ``challengeID``=7228
-        * Challenge ID
-    * ``challengeName``=gym
-        * Also needed apparently
-    * ``cursor`` and ``count`` don't seem to affect
-
-    Unique to Comments (comment/list/):
-    * ``aweme_id``=7244619447191735595
-        * Video ID
-    * ``cursor``=0
-        * Index into list of comments
-
-    Unique to Related Videos (related/item_list/):
-    * ``itemID``=7244619447191735595
-        * Video ID
-    * ``cursor``=0
-        * Index into list of related videos
-
-    Unique to User Posts (post/item_list/):
-    * ``secUid``=MS4wLjABAAAAv7iSuuXDJGDvJkmH_vz1qkDZYo1apxgzaxdBSeIuPiM
-        * User ID
-    * ``cursor`` is a Unix Timestamp. The retrieved videos are the newest ``count`` since before said timestamp
-    * Next ``cursor`` is provided in response
-    * Requires msToken cookie(s)
-
-    Unique to Challenges (challenge/item_list/):
-    * ``challengeID``=7882
-        * Challenge ID
-    * ``cursor``=0
-        * Index into list of posts (sorted by popularity)
-
     :param context: Playwright Context retrieved from :class:`.AsyncTikTokAPI` with ``api.context``
     :return: a paramstring containing query parameters necessary for all API calls
     """
+
     page = context.new_page()
     agent: str = page.evaluate("navigator.userAgent")
     page.close()

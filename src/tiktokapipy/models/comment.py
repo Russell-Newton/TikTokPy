@@ -5,15 +5,15 @@ Comment data models
 from __future__ import annotations
 
 from functools import cached_property
-from typing import Any, Awaitable, Callable, ForwardRef, Optional, Union
+from typing import Any, ForwardRef, Optional, Union
 
 from playwright.async_api import BrowserContext
 from pydantic import Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel
 from tiktokapipy.util.deferred_collectors import (
-    AsyncDeferredUserGetter,
-    SyncDeferredUserGetter,
+    DeferredUserGetterAsync,
+    DeferredUserGetterSync,
 )
 
 LightUser = ForwardRef("LightUser")
@@ -92,16 +92,16 @@ class Comment(CamelCaseModel):
 
     @computed_field(repr=False)
     @cached_property
-    def author(self) -> Callable[[], Union[User, Awaitable[User]]]:
+    def author(self) -> Union[DeferredUserGetterAsync, DeferredUserGetterSync]:
         if self._api is None:
             raise TikTokAPIError(
                 "A TikTokAPI must be attached to comment._api before retrieving creator data"
             )
         unique_id = self.user if isinstance(self.user, str) else self.user.unique_id
         if isinstance(self._api.context, BrowserContext):
-            return AsyncDeferredUserGetter(self._api, unique_id)
+            return DeferredUserGetterAsync(self._api, unique_id)
         else:
-            return SyncDeferredUserGetter(self._api, unique_id)
+            return DeferredUserGetterSync(self._api, unique_id)
 
 
 del User, LightUser

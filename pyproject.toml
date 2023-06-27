@@ -45,11 +45,11 @@ test = [
 ]
 docs = [
     "docutils>=0.18",
-    "sphinx",
+    "sphinx<7",
     "sphinx-rtd-theme",
     "sphinx-autodoc-typehints",
-    "autodoc_pydantic",
     "sphinx-tabs",
+    "mock",
 ]
 
 [project.urls]

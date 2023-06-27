@@ -13,7 +13,9 @@ from tiktokapipy.util.queries import (
 )
 
 T = TypeVar("T")
+Challenge = ForwardRef("Challenge")
 Comment = ForwardRef("Comment")
+User = ForwardRef("User")
 Video = ForwardRef("Video")
 
 
@@ -27,11 +29,11 @@ class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
         self._limit = -1
 
     @abc.abstractmethod
-    def fetch_sync(self):
+    def _fetch_sync(self):
         pass
 
     @abc.abstractmethod
-    async def fetch_async(self):
+    async def _fetch_async(self):
         pass
 
     def __iter__(self):
@@ -54,7 +56,7 @@ class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
         if self._head >= len(self._collected_values):
             if not self._has_more:
                 raise StopIteration
-            self.fetch_sync()
+            self._fetch_sync()
 
         if len(self._collected_values) > self._limit:
             self._collected_values = self._collected_values[: self._limit]
@@ -84,7 +86,7 @@ class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
         if self._head >= len(self._collected_values):
             if not self._has_more:
                 raise StopAsyncIteration
-            await self.fetch_async()
+            await self._fetch_async()
 
         if len(self._collected_values) > self._limit:
             self._collected_values = self._collected_values[: self._limit]
@@ -97,7 +99,19 @@ class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
     def __getitem__(self, item):
         return self._collected_values[item]
 
-    def limit(self, limit: int):
+    def limit(self, limit: int) -> "DeferredIterator":
+        """
+        Set a limit to the number of items to iterate over. Can be useful to not iterate over an absurdly large amount
+        of data.
+
+        Example usage:
+
+        .. code-block:: python
+
+            for something in iterator.limit(30):
+                # do something
+
+        """
         if limit < 0:
             self._limit = -1
             return self
@@ -113,7 +127,7 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
         super().__init__(api)
         self._video_id = video_id
 
-    def fetch_sync(self):
+    def _fetch_sync(self):
         from tiktokapipy.models.raw_data import APIResponse
 
         raw = make_request_sync(
@@ -126,7 +140,7 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
         self._collected_values += converted.comments
         self._cursor = converted.cursor
 
-    async def fetch_async(self):
+    async def _fetch_async(self):
         from tiktokapipy.models.raw_data import APIResponse
 
         raw = await make_request_async(
@@ -156,7 +170,7 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         if self.from_type == "post":
             self._cursor = int(time.time()) * 1000
 
-    def fetch_sync(self):
+    def _fetch_sync(self):
         from tiktokapipy.models.raw_data import APIResponse
 
         # noinspection PyTypeChecker
@@ -176,7 +190,7 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         ]
         self._cursor = converted.cursor
 
-    async def fetch_async(self):
+    async def _fetch_async(self):
         from tiktokapipy.models.raw_data import APIResponse
 
         # noinspection PyTypeChecker
@@ -197,16 +211,14 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         self._cursor = converted.cursor
 
 
-class DeferredChallengeIterator:
+class DeferredChallengeIterator(Iterator[Challenge], AsyncIterator[Challenge]):
     def __init__(self, api, challenge_names: List[str]):
-        from tiktokapipy.models.challenge import Challenge
-
         self._api = api
         self._collected_values: List[Challenge] = []
         self._challenge_names = challenge_names
         self.head = 0
 
-    def fetch_sync(self):
+    def _fetch_sync(self):
         from tiktokapipy.models.raw_data import ChallengePage
 
         converted = ChallengePage.model_validate(
@@ -218,7 +230,7 @@ class DeferredChallengeIterator:
         challenge._api = self._api
         self._collected_values.append(challenge)
 
-    async def fetch_async(self):
+    async def _fetch_async(self):
         from tiktokapipy.models.raw_data import ChallengePage
 
         converted = ChallengePage.model_validate(
@@ -246,7 +258,7 @@ class DeferredChallengeIterator:
         if self.head == len(self._collected_values):
             if self.head == len(self._challenge_names):
                 raise StopIteration
-            self.fetch_sync()
+            self._fetch_sync()
         out = self._collected_values[self.head]
         self.head += 1
         return out
@@ -267,32 +279,34 @@ class DeferredChallengeIterator:
         if self.head == len(self._collected_values):
             if self.head == len(self._challenge_names):
                 raise StopAsyncIteration
-            await self.fetch_async()
+            await self._fetch_async()
         out = self._collected_values[self.head]
         self.head += 1
         return out
 
 
-class SyncDeferredUserGetter:
+class DeferredUserGetterSync:
     def __init__(self, api, unique_id: str):
         self._api = api
         self._unique_id = unique_id
         self._user = None
 
-    def __call__(self):
+    def __call__(self) -> User:
+        """Get the User"""
         if self._user is None:
             self._user = self._api.user(self._unique_id)
             self._user._api = self._api
         return self._user
 
 
-class AsyncDeferredUserGetter:
+class DeferredUserGetterAsync:
     def __init__(self, api, unique_id: str):
         self._api = api
         self._unique_id = unique_id
         self._user = None
 
-    async def __call__(self):
+    async def __call__(self) -> User:
+        """Get the User"""
         if self._user is None:
             self._user = await self._api.user(self._unique_id)
             self._user._api = self._api
