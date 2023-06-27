@@ -1,4 +1,7 @@
+from json import JSONDecodeError
+
 from playwright.async_api import BrowserContext as AsyncContext
+from playwright.async_api import Route as AsyncRoute
 from playwright.sync_api import BrowserContext as SyncContext
 
 # Thank you to https://github.com/aithedev/X-Bogus
@@ -565,14 +568,40 @@ function sign(e, b) {
 """
 
 
+async def ignore_script_route_async(route: AsyncRoute):
+    if route.request.resource_type == "script":
+        return await route.abort()
+    return await route.continue_()
+
+
 async def sign_and_get_request_async(request: str, context: AsyncContext) -> dict:
     page = await context.new_page()
+    await page.add_init_script(
+        """
+if (navigator.webdriver === false) {
+// Post Chrome 89.0.4339.0 and already good
+} else if (navigator.webdriver === undefined) {
+// Pre Chrome 89.0.4339.0 and already good
+} else {
+// Pre Chrome 88.0.4291.0 and needs patching
+delete Object.getPrototypeOf(navigator).webdriver
+}
+"""
+    )
     await page.evaluate(X_BOGUS_CREATOR_SCRIPT)
     query = request.split("?")[1]
     x_bogus = await page.evaluate(f'sign("{query}", navigator.userAgent)')
     signed = f"{request}&X-Bogus={x_bogus}"
-    resp = await page.goto(signed)
-    json = await resp.json()
+    try:
+        resp = await page.goto(signed)
+        json = await resp.json()
+    except JSONDecodeError:
+        await page.context.clear_cookies()
+        await page.goto("https://www.tiktok.com", timeout=0, wait_until="networkidle")
+        await page.reload(timeout=0, wait_until="networkidle")
+        await page.wait_for_timeout(5000)
+        resp = await page.goto(signed)
+        json = await resp.json()
     await page.close()
     return json
 
@@ -595,8 +624,16 @@ delete Object.getPrototypeOf(navigator).webdriver
     query = request.split("?")[1]
     x_bogus = page.evaluate(f'sign("{query}", navigator.userAgent)')
     signed = f"{request}&X-Bogus={x_bogus}"
-    resp = page.goto(signed)
-    json = resp.json()
+    try:
+        resp = page.goto(signed)
+        json = resp.json()
+    except JSONDecodeError:
+        page.context.clear_cookies()
+        page.goto("https://www.tiktok.com", timeout=0, wait_until="networkidle")
+        page.reload(timeout=0, wait_until="networkidle")
+        page.wait_for_timeout(5000)
+        resp = page.goto(signed)
+        json = resp.json()
     page.close()
     return json
 
