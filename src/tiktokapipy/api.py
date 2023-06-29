@@ -16,6 +16,7 @@ from tiktokapipy.models.challenge import Challenge
 from tiktokapipy.models.raw_data import (
     ChallengePage,
     PrimaryResponseType,
+    SentToLoginResponse,
     UserResponse,
     VideoPage,
 )
@@ -193,9 +194,25 @@ if (navigator.webdriver === false) {
                 page.goto(link, wait_until=None)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
                 content = page.content()
+
+                data = content.split(
+                    '<script id="SIGI_STATE" type="application/json">'
+                )[1].split("</script>")[0]
+
+                if "LoginContextModule" in data:
+                    sent_to_login = SentToLoginResponse.model_validate_json(data)
+                    page.goto(
+                        sent_to_login.login_context_module.redirect_url, wait_until=None
+                    )
+                    page.wait_for_selector("#SIGI_STATE", state="attached")
+                    content = page.content()
+                    data = content.split(
+                        '<script id="SIGI_STATE" type="application/json">'
+                    )[1].split("</script>")[0]
+
                 page.close()
 
-                data = self._extract_and_dump_data(content, data_model)
+                extracted = self._extract_and_dump_data(data, data_model)
             except (ValidationError, IndexError) as e:
                 traceback.print_exception(type(e), e, e.__traceback__)
                 page.close()
@@ -215,13 +232,9 @@ if (navigator.webdriver === false) {
                 f"(retries: {self.navigation_retries})"
             )
 
-        return data
+        return extracted
 
-    def _extract_and_dump_data(self, page_content: str, data_model: Type[_DataModelT]):
-        data = page_content.split('<script id="SIGI_STATE" type="application/json">')[
-            1
-        ].split("</script>")[0]
-
+    def _extract_and_dump_data(self, data: str, data_model: Type[_DataModelT]):
         if self.data_dump_file:
             with open(
                 f"{self.data_dump_file}.{data_model.__name__}.json",

@@ -16,6 +16,7 @@ from tiktokapipy.models.challenge import Challenge
 from tiktokapipy.models.raw_data import (
     ChallengePage,
     PrimaryResponseType,
+    SentToLoginResponse,
     UserResponse,
     VideoPage,
 )
@@ -77,11 +78,26 @@ if (navigator.webdriver === false) {
             try:
                 await page.goto(link, wait_until=None)
                 await page.wait_for_selector("#SIGI_STATE", state="attached")
-
                 content = await page.content()
+
+                data = content.split(
+                    '<script id="SIGI_STATE" type="application/json">'
+                )[1].split("</script>")[0]
+
+                if "LoginContextModule" in data:
+                    sent_to_login = SentToLoginResponse.model_validate_json(data)
+                    await page.goto(
+                        sent_to_login.login_context_module.redirect_url, wait_until=None
+                    )
+                    await page.wait_for_selector("#SIGI_STATE", state="attached")
+                    content = await page.content()
+                    data = content.split(
+                        '<script id="SIGI_STATE" type="application/json">'
+                    )[1].split("</script>")[0]
+
                 await page.close()
 
-                data = self._extract_and_dump_data(content, data_model)
+                extracted = self._extract_and_dump_data(data, data_model)
             except (ValidationError, IndexError) as e:
                 traceback.print_exception(type(e), e, e.__traceback__)
                 await page.close()
@@ -101,7 +117,7 @@ if (navigator.webdriver === false) {
                 f"(retries: {self.navigation_retries})"
             )
 
-        return data
+        return extracted
 
     async def challenge(
         self, challenge_name: str, *, video_limit: int = -1

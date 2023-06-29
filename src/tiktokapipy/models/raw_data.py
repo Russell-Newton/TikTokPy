@@ -111,3 +111,11 @@ class VideoResponse(PrimaryResponseType):
         return super().model_validate(
             obj, strict=strict, from_attributes=from_attributes, context=context
         )
+
+
+class LoginContextModule(CamelCaseModel):
+    redirect_url: str
+
+
+class SentToLoginResponse(TitleCaseModel):
+    login_context_module: LoginContextModule
