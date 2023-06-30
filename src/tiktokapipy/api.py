@@ -9,7 +9,7 @@ import traceback
 import warnings
 from typing import Literal, Optional, Type, TypeVar, Union
 
-from playwright.sync_api import Page, TimeoutError, sync_playwright
+from playwright.sync_api import Page, Route, TimeoutError, sync_playwright
 from pydantic import ValidationError
 from tiktokapipy import ERROR_CODES, TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.models.challenge import Challenge
@@ -190,6 +190,13 @@ if (navigator.webdriver === false) {
 }
             """
             )
+
+            def ignore_scripts(route: Route):
+                if route.request.resource_type == "script":
+                    return route.abort()
+                return route.continue_()
+
+            page.route("**/*", ignore_scripts)
             try:
                 page.goto(link, wait_until=None)
                 page.wait_for_selector("#SIGI_STATE", state="attached")
