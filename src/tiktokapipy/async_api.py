@@ -92,6 +92,11 @@ if (navigator.webdriver === false) {
                 )[1].split("</script>")[0]
 
                 if "LoginContextModule" in data:
+                    warnings.warn(
+                        "Redirected to a login page. Trying again...",
+                        category=TikTokAPIWarning,
+                        stacklevel=2,
+                    )
                     sent_to_login = SentToLoginResponse.model_validate_json(data)
                     await page.goto(
                         sent_to_login.login_context_module.redirect_url, wait_until=None
