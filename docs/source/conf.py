@@ -10,6 +10,8 @@
 import os
 import sys
 
+import toml
+
 sys.path.insert(
     0, os.path.abspath("../../src")
 )  # Source code dir relative to this file
@@ -21,7 +23,7 @@ sys.path.insert(0, os.path.abspath("../ext"))  # Custom ext dir relative to this
 project = "TikTokPy"
 copyright = "2023, Russell Newton"
 author = "Russell Newton"
-release = "0.2.0a3"
+release = toml.load("../../pyproject.toml")["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

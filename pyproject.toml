@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tiktokapipy"
-version = "0.2.0a3"
+version = "0.2.0"
 authors = [
     { name="Russell Newton", email="russell.newton01@gmail.com" },
 ]
@@ -44,6 +44,7 @@ test = [
     "tox",
 ]
 docs = [
+    "toml",
     "docutils>=0.18",
     "sphinx<7",
     "sphinx-rtd-theme",

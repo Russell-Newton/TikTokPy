@@ -533,7 +533,7 @@ class ModelInspector:
         self.model = model
         self.field_validator_mappings = self.get_field_validator_mapping()
 
-        self.config = ConfigInspector(self)
+        # self.config = ConfigInspector(self)
         self.schema = SchemaInspector(self)
         self.fields = FieldInspector(self)
         # self.validators = ValidatorInspector(self)
