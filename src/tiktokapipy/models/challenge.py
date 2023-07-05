@@ -7,7 +7,7 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Any, ForwardRef, Optional
 
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel
 from tiktokapipy.util.deferred_collectors import DeferredItemListIterator
@@ -32,7 +32,7 @@ class LightChallenge(CamelCaseModel):
 class Challenge(LightChallenge):
     """Challenge data"""
 
-    id: int = Field(aliases=["cid", "uid", "id"])
+    id: int = Field(validation_alias=AliasChoices("cid", "uid", "id"))
     """The Challenge's unique id"""
     desc: str
     is_commerce: Optional[bool] = None

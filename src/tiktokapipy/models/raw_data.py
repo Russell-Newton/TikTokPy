@@ -5,7 +5,7 @@ Unprocessed data retrieved directly from TikTok
 
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
-from pydantic import Field
+from pydantic import AliasPath, Field
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.models.challenge import Challenge, ChallengeStats
 from tiktokapipy.models.comment import Comment
@@ -113,9 +113,7 @@ class VideoResponse(PrimaryResponseType):
         )
 
 
-class LoginContextModule(CamelCaseModel):
-    redirect_url: str
-
-
 class SentToLoginResponse(TitleCaseModel):
-    login_context_module: LoginContextModule
+    redirect_url: str = Field(
+        validation_alias=AliasPath("LoginContextModule", "redirectUrl")
+    )

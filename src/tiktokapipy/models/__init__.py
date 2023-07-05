@@ -46,19 +46,21 @@ class TikTokDataModel(BaseModel, metaclass=DataModelDefaultDocumentor):
 class CamelCaseModel(TikTokDataModel):
     """:autodoc-skip:"""
 
-    class Config:
-        alias_generator = _to_camel
-        populate_by_name = True
-        arbitrary_types_allowed = True
+    model_config = dict(
+        alias_generator=_to_camel,
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
 
 class TitleCaseModel(TikTokDataModel):
     """:autodoc-skip:"""
 
-    class Config:
-        alias_generator = _to_title
-        populate_by_name = True
-        arbitrary_types_allowed = True
+    model_config = dict(
+        alias_generator=_to_title,
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
 
 
 __all__ = [

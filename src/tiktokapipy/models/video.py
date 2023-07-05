@@ -6,8 +6,8 @@ from datetime import datetime
 from functools import cached_property
 from typing import Any, ForwardRef, List, Optional, Union
 
-from playwright.async_api import BrowserContext
-from pydantic import Field, computed_field
+from playwright.async_api import BrowserContext as AsyncBrowserContext
+from pydantic import AliasChoices, Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.util.deferred_collectors import (
@@ -125,7 +125,7 @@ class ImagePost(CamelCaseModel):
 class LightVideo(CamelCaseModel):
     """Bare minimum information for scraping"""
 
-    id: int = Field(aliases=["cid", "uid", "id"])
+    id: int = Field(validation_alias=AliasChoices("cid", "uid", "id"))
     """The unique video ID"""
     # Have this here to sort the iteration.
     stats: VideoStats
@@ -249,7 +249,7 @@ class Video(LightVideo):
         unique_id = (
             self.author if isinstance(self.author, str) else self.author.unique_id
         )
-        if isinstance(self._api.context, BrowserContext):
+        if isinstance(self._api.context, AsyncBrowserContext):
             return DeferredUserGetterAsync(self._api, unique_id)
         else:
             return DeferredUserGetterSync(self._api, unique_id)

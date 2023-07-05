@@ -6,7 +6,7 @@ from functools import cached_property
 from typing import Any, ForwardRef, Optional, Union
 from urllib.parse import quote
 
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel
 from tiktokapipy.util.deferred_collectors import DeferredItemListIterator
@@ -42,7 +42,7 @@ class User(LightUser):
     ##################
     # Identification #
     ##################
-    id: int = Field(aliases=["cid", "uid", "id"])
+    id: int = Field(validation_alias=AliasChoices("cid", "uid", "id"))
     """The User's unique id"""
     # short_id: Optional[str]
     nickname: str

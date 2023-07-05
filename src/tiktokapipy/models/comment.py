@@ -8,7 +8,7 @@ from functools import cached_property
 from typing import Any, ForwardRef, Optional, Union
 
 from playwright.async_api import BrowserContext
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel
 from tiktokapipy.util.deferred_collectors import (
@@ -57,7 +57,7 @@ class Comment(CamelCaseModel):
     ##################
     # Identification #
     ##################
-    id: Optional[int] = Field(None, aliases=["cid", "uid", "id"])
+    id: Optional[int] = Field(None, validation_alias=AliasChoices("cid", "uid", "id"))
     """The Comment's unique id"""
     # share_info: ShareInfo   # contains link to video and some extra information
     video_id: int = Field(
