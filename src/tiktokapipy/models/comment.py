@@ -4,10 +4,20 @@ Comment data models
 
 from __future__ import annotations
 
-from typing import Awaitable, Callable, Optional, Union
+from functools import cached_property
+from typing import Any, ForwardRef, Optional, Union
 
-from pydantic import Field
+from playwright.async_api import BrowserContext
+from pydantic import AliasChoices, Field, computed_field
+from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel
+from tiktokapipy.util.deferred_collectors import (
+    DeferredUserGetterAsync,
+    DeferredUserGetterSync,
+)
+
+LightUser = ForwardRef("LightUser")
+User = ForwardRef("User")
 
 
 class ShareInfo(CamelCaseModel):
@@ -39,15 +49,15 @@ class Comment(CamelCaseModel):
     text: str
     digg_count: int
     # user_digged: int            # liked by you
-    reply_comment_total: Optional[int]
-    author_pin: Optional[bool]  # pinned by author
+    reply_comment_total: Optional[int] = None
+    author_pin: Optional[bool] = None  # pinned by author
     is_author_digged: bool  # liked by author
     comment_language: str
 
     ##################
     # Identification #
     ##################
-    id: Optional[int]
+    id: Optional[int] = Field(None, validation_alias=AliasChoices("cid", "uid", "id"))
     """The Comment's unique id"""
     # share_info: ShareInfo   # contains link to video and some extra information
     video_id: int = Field(
@@ -69,10 +79,34 @@ class Comment(CamelCaseModel):
     # trans_btn_style: int
     # label_list: Optional[list]
 
-    author: Optional[Callable[[], Union[User, Awaitable[User]]]]
-    """Set on return from API. Call to retrieve data on the :class:`.User` that wrote the comment."""
+    @computed_field(repr=False)
+    @property
+    def _api(self) -> Any:
+        if not hasattr(self, "_api_internal"):
+            self._api_internal = None
+        return self._api_internal
+
+    @_api.setter
+    def _api(self, api):
+        self._api_internal = api
+
+    @computed_field(repr=False)
+    @cached_property
+    def author(self) -> Union[DeferredUserGetterAsync, DeferredUserGetterSync]:
+        if self._api is None:
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to comment._api before retrieving creator data"
+            )
+        unique_id = self.user if isinstance(self.user, str) else self.user.unique_id
+        if isinstance(self._api.context, BrowserContext):
+            return DeferredUserGetterAsync(self._api, unique_id)
+        else:
+            return DeferredUserGetterSync(self._api, unique_id)
+
+
+del User, LightUser
 
 
 from tiktokapipy.models.user import LightUser, User  # noqa E402
 
-Comment.update_forward_refs()
+Comment.model_rebuild()

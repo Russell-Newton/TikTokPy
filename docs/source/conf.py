@@ -10,6 +10,8 @@
 import os
 import sys
 
+import toml
+
 sys.path.insert(
     0, os.path.abspath("../../src")
 )  # Source code dir relative to this file
@@ -21,7 +23,7 @@ sys.path.insert(0, os.path.abspath("../ext"))  # Custom ext dir relative to this
 project = "TikTokPy"
 copyright = "2023, Russell Newton"
 author = "Russell Newton"
-release = "0.1.13.post1"
+release = toml.load("../../pyproject.toml")["project"]["version"]
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -32,7 +34,7 @@ extensions = [
     "sphinx.ext.autosectionlabel",
     "sphinx_autodoc_typehints",
     "sphinx_tabs.tabs",
-    "sphinxcontrib.autodoc_pydantic",
+    "autodoc_pydantic",
     "pydantic_autosummary",
 ]
 
@@ -65,6 +67,8 @@ html_theme_options = {
 autosummary_generate = True  # Turn on pydantic_autosummary
 autosummary_mock_imports = [  # Prevent certain modules from generating
     "tiktokapipy.models.raw_data",
+    "tiktokapipy.util.queries",
+    "tiktokapipy.util.signing",
 ]
 autoclass_content = "both"  # Add __init__ doc (ie. params) to class summaries
 html_show_sourcelink = (
@@ -81,12 +85,15 @@ autodoc_default_options = {
 
 autodoc_pydantic_model_show_config_summary = False
 autodoc_pydantic_field_show_alias = False
+autodoc_pydantic_model_show_json = False
 
 typehints_defaults = "comma"
 
 
 def autodoc_skip_member(app, what, name, obj, skip, options):
     if obj.__doc__ and ":autodoc-skip:" in obj.__doc__:
+        return True
+    if name.startswith("model_"):
         return True
     return None
 

@@ -3,6 +3,7 @@ from tiktokapipy import TikTokAPIError
 from tiktokapipy.models.video import video_link
 
 
+@pytest.mark.skip("Removed mobile emulation")
 async def test_slideshow_async(async_api_mobile, slideshow_id):
     link = video_link(slideshow_id)
     video = await async_api_mobile.video(link)
@@ -13,6 +14,7 @@ async def test_slideshow_async(async_api_mobile, slideshow_id):
     assert await video.creator()
 
 
+@pytest.mark.skip("Removed mobile emulation")
 def test_slideshow_sync(sync_api_mobile, slideshow_id):
     link = video_link(slideshow_id)
     video = sync_api_mobile.video(link)

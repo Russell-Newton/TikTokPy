@@ -9,6 +9,7 @@ API Reference
     tiktokapipy.api
     tiktokapipy.async_api
     tiktokapipy.models
+    tiktokapipy.util
 
 .. rubric:: Exceptions
 

@@ -3,15 +3,26 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Awaitable, Callable, List, Optional, Union
+from functools import cached_property
+from typing import Any, ForwardRef, List, Optional, Union
 
-from pydantic import Field
-from tiktokapipy.models import (
-    AsyncDeferredIterator,
-    CamelCaseModel,
-    DeferredIterator,
-    TitleCaseModel,
+from playwright.async_api import BrowserContext as AsyncBrowserContext
+from pydantic import AliasChoices, Field, computed_field
+from tiktokapipy import TikTokAPIError
+from tiktokapipy.models import CamelCaseModel, TitleCaseModel
+from tiktokapipy.util.deferred_collectors import (
+    DeferredChallengeIterator,
+    DeferredCommentIterator,
+    DeferredUserGetterAsync,
+    DeferredUserGetterSync,
 )
+
+LightChallenge = ForwardRef("LightChallenge")
+Challenge = ForwardRef("Challenge")
+Comment = ForwardRef("Comment")
+LightUser = ForwardRef("LightUser")
+User = ForwardRef("User")
+UserStats = ForwardRef("UserStats")
 
 
 class VideoStats(CamelCaseModel):
@@ -36,13 +47,13 @@ class SubtitleData(TitleCaseModel):
 class VideoData(CamelCaseModel):
     """Contains data about a downloadable video"""
 
-    id: int
+    # id: int
     height: int
     width: int
     duration: int
     ratio: str
-    format: Optional[str]
-    bitrate: Optional[int]
+    format: Optional[str] = None
+    bitrate: Optional[int] = None
     # encoded_type: str
     # video_quality: str
     # encode_user_tag: str
@@ -56,8 +67,8 @@ class VideoData(CamelCaseModel):
     cover: str
     origin_cover: str
     dynamic_cover: str
-    share_cover: List[str]
-    reflow_cover: str
+    share_cover: Optional[List[str]] = None
+    reflow_cover: Optional[str] = None
 
     ###############
     # Video links #
@@ -72,10 +83,10 @@ class MusicData(CamelCaseModel):
     id: int
     title: str
     play_url: str
-    author_name: Optional[str]
+    author_name: Optional[str] = None
     duration: int
     original: bool
-    album: Optional[str]
+    album: Optional[str] = None
 
     cover_large: str
     cover_medium: str
@@ -114,7 +125,7 @@ class ImagePost(CamelCaseModel):
 class LightVideo(CamelCaseModel):
     """Bare minimum information for scraping"""
 
-    id: int
+    id: int = Field(validation_alias=AliasChoices("cid", "uid", "id"))
     """The unique video ID"""
     # Have this here to sort the iteration.
     stats: VideoStats
@@ -128,9 +139,9 @@ class Video(LightVideo):
     #####################
     desc: str
     """Video description"""
-    diversification_labels: Optional[List[str]]
+    diversification_labels: Optional[List[str]] = None
     """Tags/Categories applied to the video"""
-    challenges: Optional[List[LightChallenge]]
+    challenges: Optional[List[LightChallenge]] = None
     """
     We don't want to grab anything more than the title so we can generate the lazy challenge getter.
     :autodoc-skip:
@@ -140,7 +151,7 @@ class Video(LightVideo):
     # digged: bool
     # item_comment_status: int
     # location_created: Optional[str]
-    image_post: Optional[ImagePost]
+    image_post: Optional[ImagePost] = None
     """The images in the video if the video is a slideshow"""
 
     ######################
@@ -194,24 +205,64 @@ class Video(LightVideo):
     # for_friend: bool
     # vl1: bool
 
-    comments: Optional[List[Comment]]
-    """Set on return from API. Contains all :class:`.Comment`s gathered during scraping."""
-    creator: Optional[Callable[[], Union[User, Awaitable[User]]]]
-    """Set on return from API. Call to retrieve data on the :class:`.User` that created the video."""
-    tags: Optional[
-        Union[
-            DeferredIterator[LightChallenge, Challenge],
-            AsyncDeferredIterator[LightChallenge, Challenge],
-        ]
-    ]
-    """Set on return from API. Iterate over to retrieve data on the :class:`.Challenge`s applied to the video."""
+    @computed_field(repr=False)
+    @property
+    def _api(self) -> Any:
+        if not hasattr(self, "_api_internal"):
+            self._api_internal = None
+        return self._api_internal
+
+    @_api.setter
+    def _api(self, api):
+        self._api_internal = api
+
+    @computed_field(repr=False)
+    @cached_property
+    def comments(self) -> DeferredCommentIterator:
+        if self._api is None:
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to video._api before collecting comments"
+            )
+        return DeferredCommentIterator(self._api, self.id)
+
+    @computed_field(repr=False)
+    @cached_property
+    def tags(self) -> DeferredChallengeIterator:
+        if self._api is None:
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to video._api before collecting comments"
+            )
+        return DeferredChallengeIterator(
+            self._api,
+            [challenge.title for challenge in self.challenges]
+            if self.challenges
+            else [],
+        )
+
+    @computed_field(repr=False)
+    @cached_property
+    def creator(self) -> Union[DeferredUserGetterAsync, DeferredUserGetterSync]:
+        if self._api is None:
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to video._api before retrieving creator data"
+            )
+        unique_id = (
+            self.author if isinstance(self.author, str) else self.author.unique_id
+        )
+        if isinstance(self._api.context, AsyncBrowserContext):
+            return DeferredUserGetterAsync(self._api, unique_id)
+        else:
+            return DeferredUserGetterSync(self._api, unique_id)
+
+
+del Challenge, LightChallenge, Comment, LightUser, User, UserStats
 
 
 from tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
 from tiktokapipy.models.comment import Comment  # noqa E402
 from tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
 
-Video.update_forward_refs()
+Video.model_rebuild()
 
 
 def video_link(video_id: int) -> str:

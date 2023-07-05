@@ -40,32 +40,6 @@ def sync_api(navigation_timeout, navigation_retries, headless_browsing) -> TikTo
         yield api
 
 
-@pytest.fixture(scope="function")
-async def async_api_mobile(
-    navigation_timeout, navigation_retries, headless_browsing
-) -> AsyncTikTokAPI:
-    async with AsyncTikTokAPI(
-        emulate_mobile=True,
-        navigation_timeout=navigation_timeout,
-        navigation_retries=navigation_retries,
-        headless=headless_browsing,
-    ) as api:
-        yield api
-
-
-@pytest.fixture(scope="function")
-def sync_api_mobile(
-    navigation_timeout, navigation_retries, headless_browsing
-) -> TikTokAPI:
-    with TikTokAPI(
-        emulate_mobile=True,
-        navigation_timeout=navigation_timeout,
-        navigation_retries=navigation_retries,
-        headless=headless_browsing,
-    ) as api:
-        yield api
-
-
 @pytest.fixture(scope="session")
 def video_id():
     return 7109512307918621995
