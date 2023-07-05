@@ -48,7 +48,7 @@ class VideoInfo(CamelCaseModel):
 class VideoPage(StatusPage):
     """:autodoc-skip:"""
 
-    item_info: VideoInfo
+    item_info: Optional[VideoInfo] = None
 
 
 class APIResponse(CamelCaseModel):

@@ -1,10 +1,11 @@
 import abc
 import time
+import warnings
 from typing import AsyncIterator, ForwardRef, Iterator, List, Literal, TypeVar, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
 from playwright.sync_api import BrowserContext as SyncBrowserContext
-from tiktokapipy import TikTokAPIError
+from tiktokapipy import TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.util.queries import (
     get_challenge_detail_async,
     get_challenge_detail_sync,
@@ -58,7 +59,7 @@ class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
                 raise StopIteration
             self._fetch_sync()
 
-        if len(self._collected_values) > self._limit:
+        if 0 <= self._limit < len(self._collected_values):
             self._collected_values = self._collected_values[: self._limit]
             self._has_more = False
 
@@ -88,7 +89,7 @@ class DeferredIterator(abc.ABC, Iterator[T], AsyncIterator[T]):
                 raise StopAsyncIteration
             await self._fetch_async()
 
-        if len(self._collected_values) > self._limit:
+        if 0 <= self._limit < len(self._collected_values):
             self._collected_values = self._collected_values[: self._limit]
             self._has_more = False
 
@@ -136,7 +137,7 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
         converted = APIResponse.model_validate(raw)
         for comment in converted.comments:
             comment._api = self._api
-        self.has_more = converted.has_more
+        self._has_more = converted.has_more
         self._collected_values += converted.comments
         self._cursor = converted.cursor
 
@@ -149,7 +150,7 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
         converted = APIResponse.model_validate(raw)
         for comment in converted.comments:
             comment._api = self._api
-        self.has_more = converted.has_more
+        self._has_more = converted.has_more
         self._collected_values += converted.comments
         self._cursor = converted.cursor
 
@@ -184,11 +185,20 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         converted = APIResponse.model_validate(raw)
         for item in converted.item_list:
             item._api = self._api
-        self.has_more = converted.has_more
-        self._collected_values += [
-            self._api.video(video.id) for video in converted.item_list
-        ]
+        self._has_more = converted.has_more
         self._cursor = converted.cursor
+        if not converted.item_list:
+            return
+
+        for video in converted.item_list:
+            try:
+                self._collected_values.append(self._api.video(video.id))
+            except TikTokAPIError:
+                warnings.warn(
+                    f"Unable to grab video with id {video.id}",
+                    category=TikTokAPIWarning,
+                    stacklevel=2,
+                )
 
     async def _fetch_async(self):
         from tiktokapipy.models.raw_data import APIResponse
@@ -204,11 +214,19 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         converted = APIResponse.model_validate(raw)
         for item in converted.item_list:
             item._api = self._api
-        self.has_more = converted.has_more
-        self._collected_values += [
-            await self._api.video(video.id) for video in converted.item_list
-        ]
+        self._has_more = converted.has_more
         self._cursor = converted.cursor
+        if not converted.item_list:
+            return
+        for video in converted.item_list:
+            try:
+                self._collected_values.append(await self._api.video(video.id))
+            except TikTokAPIError:
+                warnings.warn(
+                    f"Unable to grab video with id {video.id}",
+                    category=TikTokAPIWarning,
+                    stacklevel=2,
+                )
 
 
 class DeferredChallengeIterator(Iterator[Challenge], AsyncIterator[Challenge]):
