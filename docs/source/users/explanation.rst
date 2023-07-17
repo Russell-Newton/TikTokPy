@@ -7,6 +7,10 @@ but this does come with its limitations.
 
 TikTokPy grabs information in two steps:
 
+.. warning::
+    The following explanation is only valid for library versions prior to 0.2.0. This page will eventually be updated to
+    reflect the new behavior.
+
 Grabbing Preloaded Content
 ==========================
 

@@ -4,11 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from functools import cached_property
-from io import BytesIO
 from typing import Any, ForwardRef, List, Optional, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
-from playwright.sync_api import BrowserContext as SyncBrowserContext
 from pydantic import AliasChoices, Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
@@ -84,7 +82,7 @@ class MusicData(CamelCaseModel):
 
     id: int
     title: str
-    play_url: str
+    play_url: Optional[str] = None
     author_name: Optional[str] = None
     duration: int
     original: bool
@@ -256,81 +254,11 @@ class Video(LightVideo):
         else:
             return DeferredUserGetterSync(self._api, unique_id)
 
-    async def download_async(self) -> BytesIO:
-        if self.image_post:
-            raise TikTokAPIError(
-                "Downloading slide shows is not directly supported yet."
-            )
-        if self._api is None:
-            raise TikTokAPIError(
-                "A TikTokAPI must be attached to video._api before retrieving creator data."
-            )
-        if isinstance(self._api.context, SyncBrowserContext):
-            raise TikTokAPIError(
-                "Attempting to use TikTokAPI in an asynchronous context. Use `download_sync()` instead."
-            )
-
-        from playwright.async_api import Page
-
-        page: Page = await self._api.context.new_page()
-        response = await page.goto(
-            self.video.download_addr, referer="https://www.tiktok.com"
-        )
-        return BytesIO(await response.body())
-
-    def download_sync(self) -> BytesIO:
-        if self.image_post:
-            raise TikTokAPIError(
-                "Downloading slide shows is not directly supported yet."
-            )
-        if self._api is None:
-            raise TikTokAPIError(
-                "A TikTokAPI must be attached to video._api before retrieving creator data."
-            )
-        if isinstance(self._api.context, AsyncBrowserContext):
-            raise TikTokAPIError(
-                "Attempting to use AsyncTikTokAPI in a synchronous context. Use `await download_async()` instead."
-            )
-
-        from playwright.sync_api import Page
-
-        page: Page = self._api.context.new_page()
-        page.add_init_script(
-            """
-    if (navigator.webdriver === false) {
-    // Post Chrome 89.0.4339.0 and already good
-    } else if (navigator.webdriver === undefined) {
-    // Pre Chrome 89.0.4339.0 and already good
-    } else {
-    // Pre Chrome 88.0.4291.0 and needs patching
-    delete Object.getPrototypeOf(navigator).webdriver
-    }
-    """
-        )
-        # response = page.goto(self.video.download_addr)
-        print(page.context.cookies())
-        if len(page.context.cookies()) == 0:
-            page.goto("https://www.tiktok.com")
-            page.reload()
-            page.wait_for_timeout(5000)
-        print(page.context.cookies())
-        cookie_header = "; ".join(
-            f"{cookie['name']}={cookie['value']}"
-            for cookie in page.context.cookies()
-            if cookie["domain"] == ".tiktok.com"
-        )
-        response2 = page.request.get(
-            self.video.download_addr,
-            headers={
-                "Referer": "https://www.tiktok.com",
-                "Sec-Fetch-Dest": "video",
-                "Sec-Fetch-Mode": "no-cors",
-                "Sec-Fetch-Site": "same-site",
-                "Cookie": cookie_header,
-            },
-        )
-        page.close()
-        return BytesIO(response2.body())
+    @computed_field(repr=False)
+    @cached_property
+    def url(self) -> str:
+        """The url to the video on TikTok."""
+        return video_link(self.id)
 
 
 del Challenge, LightChallenge, Comment, LightUser, User, UserStats
