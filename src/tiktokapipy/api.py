@@ -21,7 +21,7 @@ from tiktokapipy.models.raw_data import (
     VideoPage,
 )
 from tiktokapipy.models.user import User, user_link
-from tiktokapipy.models.video import Video
+from tiktokapipy.models.video import Video, is_mobile_share_link
 from tiktokapipy.util.queries import get_challenge_detail_sync, get_video_detail_sync
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
@@ -161,6 +161,34 @@ class TikTokAPI:
         :rtype: :class:`.Video`
         """
         if isinstance(link_or_id, str):
+            if is_mobile_share_link(link_or_id):
+                self.context.clear_cookies()
+                page: Page = self.context.new_page()
+                page.add_init_script(
+                    """
+    if (navigator.webdriver === false) {
+        // Post Chrome 89.0.4339.0 and already good
+    } else if (navigator.webdriver === undefined) {
+        // Pre Chrome 89.0.4339.0 and already good
+    } else {
+        // Pre Chrome 88.0.4291.0 and needs patching
+        delete Object.getPrototypeOf(navigator).webdriver
+    }
+                """
+                )
+
+                def ignore_scripts(route: Route):
+                    if route.request.resource_type == "script":
+                        return route.abort()
+                    return route.continue_()
+
+                page.route("**/*", ignore_scripts)
+                page.goto(link_or_id, wait_until=None)
+                page.wait_for_selector("#SIGI_STATE", state="attached")
+
+                link_or_id = page.url
+
+                page.close()
             video_id = link_or_id.split("/")[-1].split("?")[0]
         else:
             video_id = link_or_id

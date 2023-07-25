@@ -1,6 +1,8 @@
 import abc
 import time
 import warnings
+from datetime import datetime
+from json import JSONDecodeError
 from typing import AsyncIterator, ForwardRef, Iterator, List, Literal, TypeVar, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
@@ -175,20 +177,34 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         from tiktokapipy.models.raw_data import APIResponse
 
         # noinspection PyTypeChecker
-        raw = make_request_sync(
-            f"{self.from_type}/item_list/",
-            self._cursor,
-            self._target_id,
-            self._api.context,
-            **self._extra_params,
-        )
+        try:
+            raw = make_request_sync(
+                f"{self.from_type}/item_list/",
+                self._cursor,
+                self._target_id,
+                self._api.context,
+                **self._extra_params,
+            )
+        except JSONDecodeError:
+            readable_cursor = (
+                f"video #{self._cursor}"
+                if self.from_type == "challenge"
+                else datetime.fromtimestamp(self._cursor // 1000).strftime("%c")
+            )
+            warnings.warn(
+                f"Unable to grab videos beyond {readable_cursor} (JSONDecodeError), stopping iteration early."
+                f"Try again if you think this is a mistake.",
+                category=TikTokAPIWarning,
+                stacklevel=2,
+            )
+            self._has_more = False
+            raise StopIteration
         converted = APIResponse.model_validate(raw)
-        for item in converted.item_list:
-            item._api = self._api
+        if not converted.item_list:
+            self._has_more = False
+            raise StopIteration
         self._has_more = converted.has_more
         self._cursor = converted.cursor
-        if not converted.item_list:
-            return
 
         for video in converted.item_list:
             try:
@@ -204,20 +220,34 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         from tiktokapipy.models.raw_data import APIResponse
 
         # noinspection PyTypeChecker
-        raw = await make_request_async(
-            f"{self.from_type}/item_list/",
-            self._cursor,
-            self._target_id,
-            self._api.context,
-            **self._extra_params,
-        )
+        try:
+            raw = await make_request_async(
+                f"{self.from_type}/item_list/",
+                self._cursor,
+                self._target_id,
+                self._api.context,
+                **self._extra_params,
+            )
+        except JSONDecodeError:
+            readable_cursor = (
+                f"video #{self._cursor}"
+                if self.from_type == "challenge"
+                else datetime.fromtimestamp(self._cursor).strftime("%c")
+            )
+            warnings.warn(
+                f"Unable to grab videos beyond {readable_cursor}, stopping iteration early."
+                f"Try again if you think this is a mistake.",
+                category=TikTokAPIWarning,
+                stacklevel=2,
+            )
+            self._has_more = False
+            raise StopAsyncIteration
         converted = APIResponse.model_validate(raw)
-        for item in converted.item_list:
-            item._api = self._api
+        if not converted.item_list:
+            self._has_more = False
+            raise StopAsyncIteration
         self._has_more = converted.has_more
         self._cursor = converted.cursor
-        if not converted.item_list:
-            return
         for video in converted.item_list:
             try:
                 self._collected_values.append(await self._api.video(video.id))

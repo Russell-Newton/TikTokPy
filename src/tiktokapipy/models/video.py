@@ -274,3 +274,9 @@ Video.model_rebuild()
 def video_link(video_id: int) -> str:
     """Get a working link to a TikTok video from the video's unique id."""
     return f"https://m.tiktok.com/v/{video_id}"
+
+
+def is_mobile_share_link(link: str) -> bool:
+    import re
+
+    return re.match(r"https://vm\.tiktok\.com/[0-9A-Za-z]*", link) is not None
