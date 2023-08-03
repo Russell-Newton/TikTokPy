@@ -30,6 +30,7 @@ class VideoStats(CamelCaseModel):
     share_count: int
     comment_count: int
     play_count: int
+    collect_count: int
 
 
 class SubtitleData(TitleCaseModel):
