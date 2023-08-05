@@ -120,7 +120,7 @@ class ImagePost(CamelCaseModel):
     """Still image on the video before playing"""
     share_cover: ImageData
     """Still image embedded with a sharing link"""
-    title: str
+    title: Optional[str] = None
 
 
 class LightVideo(CamelCaseModel):
