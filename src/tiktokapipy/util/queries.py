@@ -2,13 +2,14 @@
 API Queries
 :autodoc-skip:
 """
-
+import time
 from typing import Literal, Union
 from urllib.parse import quote, urlencode
 
 from playwright.async_api import BrowserContext as AsyncContext
 from playwright.sync_api import BrowserContext as SyncContext
 from tiktokapipy import TikTokAPIError
+
 from tiktokapipy.util.signing import (
     sign_and_get_request_async,
     sign_and_get_request_sync,
@@ -21,6 +22,7 @@ SUPPORTED_ENDPOINT = Literal[
     "related/item_list/",
     "item/detail/",
     "challenge/detail/",
+    "search/general/full/"
     # "user/detail/", # TODO - User detail requires msToken, X-Bogus, and _signature
     # "recommend/item_list/", # TODO - recommended list likely also requires msToken, X-Bogus, and _signature
 ]
@@ -31,11 +33,11 @@ TEMPLATE_QUERY_PARAMS_DICT = {
     "app_name": "tiktok_web",
     "browser_language": "en-US",  # TODO - Set dynamically?
     "browser_platform": "Win32",  # TODO - Set dynamically?
-    "count": 20,
+    "count": 30,
     "device_id": "",
     "device_platform": "web_pc",  # TODO - Set dynamically?
     "os": "windows",  # TODO - Set dynamically?
-    "priority_region": "",
+    "priority_region": "US",
     "referrer": "",
     "region": "US",  # TODO - Set dynamically?
     "screen_height": 0,
@@ -50,6 +52,7 @@ ENDPOINT_ID_MAP = {
     "related/item_list/": "itemID",
     "item/detail/": "itemId",
     "challenge/detail/": "challengeName",
+    "search/general/full/": "keyword",
     # "user/detail/": "secUid",
 }
 
@@ -103,7 +106,7 @@ ENDPOINT_ID_MAP = {
 
 
 async def get_necessary_query_params_async(
-    context: AsyncContext, **extra_params
+    context: AsyncContext, extra_params
 ) -> str:
     """
 
@@ -120,7 +123,7 @@ async def get_necessary_query_params_async(
         browser_name=browser_name,
         browser_version=browser_version,
     )
-    query.update(**extra_params)
+    query.update(**extra_params["extra_params"])
     return urlencode(query)
 
 
@@ -143,12 +146,57 @@ def get_necessary_query_params_sync(context: SyncContext, **extra_params) -> str
     return urlencode(query, quote_via=quote)
 
 
+async def get_ms_token(context: AsyncContext) -> str | None:
+    all_cookies = await context.cookies()
+    if len(all_cookies) != 0:
+        ms_token = {cookie['name']: cookie['value'] for cookie in all_cookies if cookie['name'] == 'msToken'}
+        return ms_token["msToken"]
+    else:
+        return None
+
+
 def get_id_type(endpoint: str) -> str:
     for k, v in ENDPOINT_ID_MAP.items():
         if k == endpoint:
             return v
     raise TikTokAPIError(f"Unsupported endpoint: {endpoint}")
 
+
+async def continuous_request_async(
+        endpoint: SUPPORTED_ENDPOINT,
+        cursor_position: int,
+        target_identifier: Union[int, str],
+        async_context: AsyncContext,
+        max_videos: int,
+        **additional_params,
+) -> list:
+
+    BASE_URL = "https://www.tiktok.com/api/"
+    VIDEO_TYPE = 1
+    NO_MORE_DATA = 0
+    collected_data = []  # List to store the concatenated data
+
+    while True:
+        query_params = await get_necessary_query_params_async(async_context, additional_params)
+        identifier_type = get_id_type(endpoint)
+
+        full_params = f"{query_params}&offset={cursor_position}&{identifier_type}={target_identifier}"
+
+        response_data = await sign_and_get_request_async(
+            f"{BASE_URL}{endpoint}?{full_params}", async_context
+        )
+
+        if 'data' in response_data:
+            video_data = [item for item in response_data['data'] if item["type"] == VIDEO_TYPE]
+            collected_data += video_data
+            additional_params["extra_params"]["search_id"] = response_data["extra"]["logid"]
+
+        more_data_available = response_data.get('has_more', NO_MORE_DATA)
+        cursor_position = response_data.get('cursor', None)
+        if more_data_available <= NO_MORE_DATA or cursor_position is None or (max_videos != -1 and len(collected_data) >= max_videos):
+            break
+
+    return collected_data
 
 async def make_request_async(
     endpoint: SUPPORTED_ENDPOINT,
@@ -196,7 +244,20 @@ async def get_video_detail_async(video_id: int, context: AsyncContext):
     return await make_request_async("item/detail/", 0, video_id, context)
 
 
+async def get_search_results_async(search_term: str, context: AsyncContext,video_limit):
+    extra_params = {
+        "keyword": search_term,
+        "from_page": "search",
+        "web_search_code": """{"tiktok":{"client_params_x":{"search_engine":{"ies_mt_user_live_video_card_use_libra":1,"mt_search_general_user_live_card":1}},"search_server":{}}}""",
+
+    }
+    ms_token = await get_ms_token(context)
+    # if ms_token is not None:
+    #     extra_params["msToken"] = ms_token
+    return await continuous_request_async("search/general/full/", 0, search_term, context, video_limit, extra_params=extra_params)
+
 __all__ = [
+    "get_search_results_async",
     "get_necessary_query_params_async",
     "get_necessary_query_params_sync",
     "make_request_async",

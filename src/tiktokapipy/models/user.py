@@ -29,7 +29,14 @@ class UserStats(CamelCaseModel):
     digg_count: int
 
     # need_fix: Union[bool, None]   # not sure what this is... collected on videos, not user pages
-
+    def as_dict(self):
+        return {
+            "follower_count": self.follower_count,
+            "following_count": self.following_count,
+            "heart_count": self.heart_count,
+            "video_count": self.video_count,
+            "digg_count": self.digg_count,
+        }
 
 class LightUser(CamelCaseModel):
     """Bare minimum information for scraping"""
@@ -86,8 +93,21 @@ class User(LightUser):
     # room_id: Optional[str]
     # extra_info: Optional[dict]        # not sure what this is
 
+
+
     stats: Optional[UserStats] = None
     """Set on return from API. Contains user statistics."""
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "unique_id": self.unique_id,
+            "nickname": self.nickname,
+            "sec_uid": self.sec_uid,
+            "private_account": self.private_account,
+            "verified": self.verified,
+            "stats": self.stats.as_dict(),
+        }
 
     @computed_field(repr=False)
     @property

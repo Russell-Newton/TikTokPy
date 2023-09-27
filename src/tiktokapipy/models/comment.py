@@ -4,6 +4,7 @@ Comment data models
 
 from __future__ import annotations
 
+from datetime import datetime
 from functools import cached_property
 from typing import Any, ForwardRef, Optional, Union
 
@@ -69,7 +70,7 @@ class Comment(CamelCaseModel):
     #################################################
     # Misc fields (not sure what most of these are) #
     #################################################
-    # create_time: int
+    create_time: int
     # status: int
     # text_extra: list
     # stick_position: int
@@ -79,6 +80,19 @@ class Comment(CamelCaseModel):
     # trans_btn_style: int
     # label_list: Optional[list]
 
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "user": self.user.unique_id,
+            "text": self.text,
+            "digg_count": self.digg_count,
+            "reply_comment_total": self.reply_comment_total,
+            "author_pin": self.author_pin,
+            "is_author_digged": self.is_author_digged,
+            "comment_language": self.comment_language,
+            "video_id": self.video_id,
+            "create_time": datetime.fromtimestamp(self.create_time).strftime("%Y-%m-%d %H:%M:%S")
+        }
     @computed_field(repr=False)
     @property
     def _api(self) -> Any:

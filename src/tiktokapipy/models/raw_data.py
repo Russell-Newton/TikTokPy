@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, TypeVar, Union
 
 from pydantic import AliasPath, Field
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
-from tiktokapipy.models.challenge import Challenge, ChallengeStats
+from tiktokapipy.models.challenge import ChallengeStats, Challenge
 from tiktokapipy.models.comment import Comment
 from tiktokapipy.models.user import User, UserStats
 from tiktokapipy.models.video import LightVideo, Video
@@ -117,3 +117,6 @@ class SentToLoginResponse(TitleCaseModel):
     redirect_url: str = Field(
         validation_alias=AliasPath("LoginContextModule", "redirectUrl")
     )
+
+class SearchResponse():
+    pass

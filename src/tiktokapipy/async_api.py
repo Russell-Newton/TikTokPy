@@ -4,6 +4,7 @@ Asynchronous API for data scraping
 
 from __future__ import annotations
 
+import json
 import traceback
 import warnings
 from typing import Type, TypeVar, Union
@@ -22,7 +23,7 @@ from tiktokapipy.models.raw_data import (
 )
 from tiktokapipy.models.user import User, user_link
 from tiktokapipy.models.video import Video, is_mobile_share_link
-from tiktokapipy.util.queries import get_challenge_detail_async, get_video_detail_async
+from tiktokapipy.util.queries import get_challenge_detail_async, get_video_detail_async, get_search_results_async
 
 _DataModelT = TypeVar("_DataModelT", bound=PrimaryResponseType, covariant=True)
 """
@@ -47,7 +48,6 @@ class AsyncTikTokAPI(TikTokAPI):
 
         self._context = await self.browser.new_context(**context_kwargs)
         self.context.set_default_navigation_timeout(self.navigation_timeout)
-
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -134,6 +134,7 @@ if (navigator.webdriver === false) {
     async def challenge(
         self, challenge_name: str, *, video_limit: int = -1
     ) -> Challenge:
+        await self.context.clear_cookies()
         response = ChallengePage.model_validate(
             await get_challenge_detail_async(challenge_name, self.context)
         )
@@ -142,6 +143,7 @@ if (navigator.webdriver === false) {
         return challenge
 
     async def user(self, user: str, *, video_limit: int = -1) -> User:
+        await self.context.clear_cookies()
         link = user_link(user)
         response = await self._scrape_data(
             link,
@@ -155,9 +157,9 @@ if (navigator.webdriver === false) {
         self,
         link_or_id: Union[int, str],
     ) -> Video:
+        await self.context.clear_cookies()
         if isinstance(link_or_id, str):
             if is_mobile_share_link(link_or_id):
-                await self.context.clear_cookies()
                 page: Page = await self.context.new_page()
                 await page.add_init_script(
                     """
@@ -187,11 +189,38 @@ if (navigator.webdriver === false) {
             video_id = link_or_id.split("/")[-1].split("?")[0]
         else:
             video_id = link_or_id
-
+        aaa = await get_video_detail_async(video_id, self.context)
         response = VideoPage.model_validate(
-            await get_video_detail_async(video_id, self.context)
+            aaa
         )
         return self._extract_video_from_response(response)
+
+    async def fetch_videos_by_term(self, term: str, *, max_videos: int = -1) -> list[VideoPage]:
+        """Fetch videos matching the given search term."""
+
+        with open("./cookies.json", "r") as cookie_file:
+            cookies = json.load(cookie_file)
+
+        await self.context.add_cookies(cookies)
+
+        search_results = await get_search_results_async(term, self.context, max_videos)
+
+        return [
+            self._extract_video_from_item(result["item"])
+            for result in search_results
+            if result["type"] == 1
+        ]
+
+    def _extract_video_from_item(self, video_item: dict) -> VideoPage:
+        """Extract video data from a given video item."""
+
+        video_data = {
+            "itemInfo": {"itemStruct": video_item},
+            "statuCode": 200,
+            "status_code": 0
+        }
+
+        return VideoPage.model_validate(video_data)
 
 
 __all__ = ["AsyncTikTokAPI"]

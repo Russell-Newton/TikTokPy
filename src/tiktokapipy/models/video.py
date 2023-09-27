@@ -32,6 +32,15 @@ class VideoStats(CamelCaseModel):
     play_count: int
     collect_count: int
 
+    def as_dict(self):
+        return {
+            "digg_count": self.digg_count,
+            "share_count": self.share_count,
+            "comment_count": self.comment_count,
+            "play_count": self.play_count,
+            "collect_count": self.collect_count
+        }
+
 
 class SubtitleData(TitleCaseModel):
     language_id: int
@@ -77,6 +86,23 @@ class VideoData(CamelCaseModel):
     play_addr: Optional[str] = None
     download_addr: Optional[str] = None
 
+    def as_dict(self):
+        return {
+            "height": self.height,
+            "width": self.width,
+            "duration": self.duration,
+            "ratio": self.ratio,
+            "format": self.format,
+            "bitrate": self.bitrate,
+            "cover": self.cover,
+            "origin_cover": self.origin_cover,
+            "dynamic_cover": self.dynamic_cover,
+            "share_cover": self.share_cover,
+            "reflow_cover": self.reflow_cover,
+            "play_addr": self.play_addr,
+            "download_addr": self.download_addr
+        }
+
 
 class MusicData(CamelCaseModel):
     """Contains data about the music within a video"""
@@ -94,7 +120,19 @@ class MusicData(CamelCaseModel):
     cover_thumb: str
 
     # schedule_search_time: int
-
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "play_url": self.play_url,
+            "author_name": self.author_name,
+            "duration": self.duration,
+            "original": self.original,
+            "album": self.album,
+            "cover_large": self.cover_large,
+            "cover_medium": self.cover_medium,
+            "cover_thumb": self.cover_thumb
+        }
 
 class ImageUrlList(CamelCaseModel):
     """
@@ -151,7 +189,7 @@ class Video(LightVideo):
     music: MusicData
     # digged: bool
     # item_comment_status: int
-    # location_created: Optional[str]
+    #location_created: Optional[str]
     image_post: Optional[ImagePost] = None
     """The images in the video if the video is a slideshow"""
 
@@ -205,7 +243,15 @@ class Video(LightVideo):
     # stickers_on_item: Optional[list]
     # for_friend: bool
     # vl1: bool
-
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "desc": self.desc,
+            "video": self.video.as_dict(),
+            "image_post": self.image_post,
+            "stats": self.stats.as_dict(),
+            "create_time": self.create_time.strftime("%Y-%m-%d %H:%M:%S"),
+        }
     @computed_field(repr=False)
     @property
     def _api(self) -> Any:

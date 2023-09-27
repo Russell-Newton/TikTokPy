@@ -588,6 +588,7 @@ delete Object.getPrototypeOf(navigator).webdriver
     query = request.split("?")[1]
     x_bogus = await page.evaluate(f'sign("{query}", navigator.userAgent)')
     signed = f"{request}&X-Bogus={x_bogus}"
+    #signed = "https://www.tiktok.com/api/search/general/full/?aid=1988&app_language=en&app_name=tiktok_web&browser_language=en-US&browser_name=Mozilla&browser_online=true&browser_platform=MacIntel&browser_version=5.0%20%28Macintosh%3B%20Intel%20Mac%20OS%20X%2010_15_7%29%20AppleWebKit%2F537.36%20%28KHTML%2C%20like%20Gecko%29%20Chrome%2F116.0.0.0%20Safari%2F537.36&channel=tiktok_web&cookie_enabled=true&device_id=7278629808304080390&device_platform=web_pc&device_type=web_h264&focus_state=false&from_page=search&history_len=3&is_fullscreen=false&is_page_visible=true&keyword=cats&offset=24&os=mac&priority_region=US&referer=&region=IL&screen_height=1440&screen_width=2560&search_id=20230927082011CFECE64B68CD0E008CE6&search_source=normal_search&tz_name=Asia%2FJerusalem&web_search_code=%7B%22tiktok%22%3A%7B%22client_params_x%22%3A%7B%22search_engine%22%3A%7B%22ies_mt_user_live_video_card_use_libra%22%3A1%2C%22mt_search_general_user_live_card%22%3A1%7D%7D%2C%22search_server%22%3A%7B%7D%7D%7D&webcast_language=en&msToken=d7eOCp1HAf4cSmkRJaWcD9sewDokplmTA7Bdqco4pQ2rRcXbSuXQ0QBRC4qigBUtWvwvJWT-em8O-wLet6uAQt8KVmyJg-E5ToJK590Weqv3Ey5zN1Y5KRV0IlibSFvIUi21gok=&X-Bogus=DFSzswVE1XbANyp5tOWVpU9WcBrY&"
     try:
         resp = await page.goto(signed)
         json = await resp.json()

@@ -22,6 +22,13 @@ class ChallengeStats(CamelCaseModel):
     video_count: int
     view_count: int
 
+    def as_dict(self):
+        return {
+            "video_count": self.video_count,
+            "view_count": self.view_count
+        }
+
+
 
 class LightChallenge(CamelCaseModel):
     """Bare minimum information for scraping"""
@@ -38,6 +45,13 @@ class Challenge(LightChallenge):
     is_commerce: Optional[bool] = None
     """Presumably whether this challenge is sponsored."""
     stats: ChallengeStats
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "title": self.title,
+            "stats": self.stats.as_dict()
+        }
 
     @computed_field(repr=False)
     @property
