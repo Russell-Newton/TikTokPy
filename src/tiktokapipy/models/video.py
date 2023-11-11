@@ -85,7 +85,7 @@ class MusicData(CamelCaseModel):
     title: str
     play_url: Optional[str] = None
     author_name: Optional[str] = None
-    duration: int
+    duration: Optional[int] = None
     original: bool
     album: Optional[str] = None
 
