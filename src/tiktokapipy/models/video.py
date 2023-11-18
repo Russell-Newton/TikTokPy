@@ -8,9 +8,9 @@ from typing import Any, ForwardRef, List, Optional, Union
 from pydantic import validator, Field, computed_field
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
-from src.tiktokapipy import TikTokAPIError
-from src.tiktokapipy.models import CamelCaseModel, TitleCaseModel
-from src.tiktokapipy.util.deferred_collectors import (
+from tiktokapipy import TikTokAPIError
+from tiktokapipy.models import CamelCaseModel, TitleCaseModel
+from tiktokapipy.util.deferred_collectors import (
     DeferredChallengeIterator,
     DeferredCommentIterator,
     DeferredUserGetterAsync,
