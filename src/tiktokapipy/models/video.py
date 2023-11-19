@@ -2,12 +2,13 @@
 
 # Import statements and other initial setups
 from __future__ import annotations
+
 from datetime import datetime
 from functools import cached_property
 from typing import Any, ForwardRef, List, Optional, Union
-from pydantic import validator, Field, computed_field
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
+from pydantic import Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.util.deferred_collectors import (
@@ -25,7 +26,7 @@ LightUser = ForwardRef("LightUser")
 User = ForwardRef("User")
 UserStats = ForwardRef("UserStats")
 
-# VideoStats model
+
 class VideoStats(CamelCaseModel):
     digg_count: int
     share_count: int
@@ -33,18 +34,18 @@ class VideoStats(CamelCaseModel):
     play_count: int
     collect_count: int
 
-# SubtitleData model
-class SubtitleData(TitleCaseModel):
-    language_id: Optional[int] = Field(alias='LanguageID')
-    language_code_name: str = Field(alias='LanguageCodeName')
-    url: str = Field(alias='Url')
-    url_expire: int = Field(alias='UrlExpire')
-    format: str = Field(alias='Format')
-    version: int = Field(alias='Version')
-    source: str = Field(alias='Source')
-    size: int = Field(alias='Size')
 
-# VideoData model with adjustments
+class SubtitleData(TitleCaseModel):
+    language_id: Optional[int] = Field(alias="LanguageID", default=None)
+    language_code_name: str = Field(alias="LanguageCodeName")
+    url: str = Field(alias="Url")
+    url_expire: int = Field(alias="UrlExpire")
+    format: str = Field(alias="Format")
+    version: int = Field(alias="Version")
+    source: str = Field(alias="Source")
+    size: int = Field(alias="Size")
+
+
 class VideoData(CamelCaseModel):
     height: int
     width: int
@@ -57,7 +58,7 @@ class VideoData(CamelCaseModel):
     encode_user_tag: Optional[str] = None
     codec_type: Optional[str] = None
     definition: Optional[str] = None
-    subtitle_infos: Optional[List[SubtitleData]]
+    subtitle_infos: Optional[List[SubtitleData]] = None
     cover: str
     origin_cover: str
     dynamic_cover: Optional[str] = None
@@ -66,7 +67,7 @@ class VideoData(CamelCaseModel):
     play_addr: Optional[str] = None
     download_addr: Optional[str] = None
 
-# MusicData model
+
 class MusicData(CamelCaseModel):
     id: int
     title: str
@@ -79,11 +80,11 @@ class MusicData(CamelCaseModel):
     cover_medium: str
     cover_thumb: str
 
-# ImageUrlList model
+
 class ImageUrlList(CamelCaseModel):
     url_list: List[str]
 
-# ImageData model
+
 class ImageData(CamelCaseModel):
     image_url: ImageUrlList = Field(
         ..., alias="imageURL", description="3 urls that can be used to access the image"
@@ -91,24 +92,24 @@ class ImageData(CamelCaseModel):
     image_width: int
     image_height: int
 
-# ImagePost model
+
 class ImagePost(CamelCaseModel):
     images: List[ImageData]
     cover: ImageData
     share_cover: ImageData
     title: Optional[str] = None
 
-# LightVideo model
+
 class LightVideo(CamelCaseModel):
     id: int = Field(alias="id")
     stats: VideoStats
     create_time: datetime
 
-# Video model with adjustments
+
 class Video(LightVideo):
     desc: str
-    diversification_labels: Optional[List[str]]
-    challenges: Optional[List[LightChallenge]]
+    diversification_labels: Optional[List[str]] = None
+    challenges: Optional[List[LightChallenge]] = None
     video: VideoData
     music: MusicData
     digged: bool
@@ -130,25 +131,35 @@ class Video(LightVideo):
     @cached_property
     def comments(self) -> DeferredCommentIterator:
         if self._api is None:
-            raise TikTokAPIError("A TikTokAPI must be attached to video._api before collecting comments")
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to video._api before collecting comments"
+            )
         return DeferredCommentIterator(self._api, self.id)
 
     @computed_field(repr=False)
     @cached_property
     def tags(self) -> DeferredChallengeIterator:
         if self._api is None:
-            raise TikTokAPIError("A TikTokAPI must be attached to video._api before collecting tags")
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to video._api before collecting tags"
+            )
         return DeferredChallengeIterator(
             self._api,
-            [challenge.title for challenge in self.challenges] if self.challenges else [],
+            [challenge.title for challenge in self.challenges]
+            if self.challenges
+            else [],
         )
 
     @computed_field(repr=False)
     @cached_property
     def creator(self) -> Union[DeferredUserGetterAsync, DeferredUserGetterSync]:
         if self._api is None:
-            raise TikTokAPIError("A TikTokAPI must be attached to video._api before retrieving creator data")
-        unique_id = self.author if isinstance(self.author, str) else self.author.unique_id
+            raise TikTokAPIError(
+                "A TikTokAPI must be attached to video._api before retrieving creator data"
+            )
+        unique_id = (
+            self.author if isinstance(self.author, str) else self.author.unique_id
+        )
         if isinstance(self._api.context, AsyncBrowserContext):
             return DeferredUserGetterAsync(self._api, unique_id)
         else:
@@ -159,23 +170,13 @@ class Video(LightVideo):
     def url(self) -> str:
         return video_link(self.id)
 
-# Utility functions
-def video_link(video_id: int) -> str:
-    return f"https://m.tiktok.com/v/{video_id}"
 
-def is_mobile_share_link(link: str) -> bool:
-    import re
-    return re.match(r"https://vm\.tiktok\.com/[0-9A-Za-z]*", link) is not None
-
-# Re-imports at the end of the file (circular dependency resolution)
 del Challenge, LightChallenge, Comment, LightUser, User, UserStats
-from  tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
-from  tiktokapipy.models.comment import Comment  # noqa E402
-from  tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
+from tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
+from tiktokapipy.models.comment import Comment  # noqa E402
+from tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
 
-# Rebuild models if necessary
 Video.model_rebuild()
-
 
 
 def video_link(video_id: int) -> str:

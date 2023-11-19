@@ -137,6 +137,9 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
             "comment/list/", self._cursor, self._video_id, self._api.context
         )
         converted = APIResponse.model_validate(raw)
+        if not converted.comments:
+            self._has_more = False
+            raise StopIteration
         for comment in converted.comments:
             comment._api = self._api
         self._has_more = converted.has_more
@@ -150,6 +153,9 @@ class DeferredCommentIterator(DeferredIterator[Comment]):
             "comment/list/", self._cursor, self._video_id, self._api.context
         )
         converted = APIResponse.model_validate(raw)
+        if not converted.comments:
+            self._has_more = False
+            raise StopAsyncIteration
         for comment in converted.comments:
             comment._api = self._api
         self._has_more = converted.has_more

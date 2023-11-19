@@ -56,7 +56,7 @@ class APIResponse(CamelCaseModel):
 
     status_code: int = 0
     cursor: Optional[int] = None
-    has_more: Union[bool, int]
+    has_more: Union[bool, int] = False
 
     total: Optional[int] = None
     comments: Optional[List[Comment]] = None
