@@ -8,7 +8,7 @@ from functools import cached_property
 from typing import Any, ForwardRef, List, Optional, Union
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
-from pydantic import Field, computed_field
+from pydantic import AliasChoices, Field, computed_field
 from tiktokapipy import TikTokAPIError
 from tiktokapipy.models import CamelCaseModel, TitleCaseModel
 from tiktokapipy.util.deferred_collectors import (
@@ -101,7 +101,7 @@ class ImagePost(CamelCaseModel):
 
 
 class LightVideo(CamelCaseModel):
-    id: int = Field(alias="id")
+    id: int = Field(validation_alias=AliasChoices("cid", "uid", "id"))
     stats: VideoStats
     create_time: datetime
 
@@ -115,6 +115,8 @@ class Video(LightVideo):
     digged: bool
     item_comment_status: int
     author: Union[LightUser, str]
+    image_post: Optional[ImagePost] = None
+    """The images in the video if the video is a slideshow"""
 
     @computed_field(repr=False)
     @property
@@ -169,6 +171,40 @@ class Video(LightVideo):
     @cached_property
     def url(self) -> str:
         return video_link(self.id)
+
+    def download(self) -> str:
+        """
+        Downloads this video, returning the relative filepath where it was stored.
+        Requires yt-dlp installed (``pip install yt-dlp``
+        or ``pip install tiktokapipy[download]``)
+        """
+        if self.image_post:
+            raise TikTokAPIError(
+                "The download function isn't available for slideshows."
+            )
+
+        try:
+            import yt_dlp
+        except ImportError:
+            raise TikTokAPIError(
+                "You don't have youtube_dl installed! "
+                "Please install with `pip install yt-dlp` or "
+                "`pip install tiktokapipy[download]"
+            )
+
+        downloaded_file = ""
+
+        class GetFileNamePP(yt_dlp.postprocessor.PostProcessor):
+            def run(self, info):
+                nonlocal downloaded_file
+                downloaded_file = info["filename"]
+                return [], info
+
+        with yt_dlp.YoutubeDL() as ydl:
+            ydl.add_post_processor(GetFileNamePP())
+            ydl.download([video_link(self.id)])
+
+        return downloaded_file
 
 
 del Challenge, LightChallenge, Comment, LightUser, User, UserStats

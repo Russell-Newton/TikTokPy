@@ -200,6 +200,12 @@ Download Videos and Slideshows
 If all you want to do is download a video or slideshow from TikTok, go no further. Because slideshows are saved as
 images with a sound, you'll need to join these images together with the sound. I'd suggest using `ffmpeg`_ for this:
 
+.. note::
+    The ``download()`` function on videos can be used to download videos to a file. It doesn't work for slideshows.
+    It requires the ``yt-dlp`` package to be installed, which can be installed with ``pip install yt-dlp`` or
+    ``pip install tiktokapipy[download]``.
+
+
 .. code-block:: py
 
     import asyncio

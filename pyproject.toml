@@ -52,6 +52,9 @@ docs = [
     "sphinx-tabs",
     "mock",
 ]
+download = [
+    "yt-dlp"
+]
 
 [project.urls]
 "Homepage" = "https://github.com/Russell-Newton/TikTokPy"
