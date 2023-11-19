@@ -7,6 +7,7 @@ from typing import AsyncIterator, ForwardRef, Iterator, List, Literal, TypeVar, 
 
 from playwright.async_api import BrowserContext as AsyncBrowserContext
 from playwright.sync_api import BrowserContext as SyncBrowserContext
+from pydantic import ValidationError
 from tiktokapipy import TikTokAPIError, TikTokAPIWarning
 from tiktokapipy.util.queries import (
     get_challenge_detail_async,
@@ -215,7 +216,7 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         for video in converted.item_list:
             try:
                 self._collected_values.append(self._api.video(video.id))
-            except TikTokAPIError:
+            except (TikTokAPIError, ValidationError):
                 warnings.warn(
                     f"Unable to grab video with id {video.id}",
                     category=TikTokAPIWarning,
@@ -257,7 +258,7 @@ class DeferredItemListIterator(DeferredIterator[Video]):
         for video in converted.item_list:
             try:
                 self._collected_values.append(await self._api.video(video.id))
-            except TikTokAPIError:
+            except (TikTokAPIError, ValidationError):
                 warnings.warn(
                     f"Unable to grab video with id {video.id}",
                     category=TikTokAPIWarning,
