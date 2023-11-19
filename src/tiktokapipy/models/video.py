@@ -169,9 +169,9 @@ def is_mobile_share_link(link: str) -> bool:
 
 # Re-imports at the end of the file (circular dependency resolution)
 del Challenge, LightChallenge, Comment, LightUser, User, UserStats
-from src.tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
-from src.tiktokapipy.models.comment import Comment  # noqa E402
-from src.tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
+from  tiktokapipy.models.challenge import Challenge, LightChallenge  # noqa E402
+from  tiktokapipy.models.comment import Comment  # noqa E402
+from  tiktokapipy.models.user import LightUser, User, UserStats  # noqa E402
 
 # Rebuild models if necessary
 Video.model_rebuild()
