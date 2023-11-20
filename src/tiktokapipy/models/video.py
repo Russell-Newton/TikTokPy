@@ -172,11 +172,16 @@ class Video(LightVideo):
     def url(self) -> str:
         return video_link(self.id)
 
-    def download(self) -> str:
+    def download(self, **yt_dlp_params) -> str:
         """
         Downloads this video, returning the relative filepath where it was stored.
         Requires yt-dlp installed (``pip install yt-dlp``
         or ``pip install tiktokapipy[download]``)
+
+        :param yt_dlp_params: additional parameters to pass to ``yt_dlp.YoutubeDL()``.
+            See `The documentation <https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L192>`_
+            for more details. By default, the ``format_sort`` field is set to ``["codec:h264"]`` to ensure
+            the downloaded video isn't in the HEVC format.
         """
         if self.image_post:
             raise TikTokAPIError(
@@ -200,7 +205,10 @@ class Video(LightVideo):
                 downloaded_file = info["filename"]
                 return [], info
 
-        with yt_dlp.YoutubeDL() as ydl:
+        if "format_sort" not in yt_dlp_params:
+            yt_dlp_params["format_sort"] = ["codec:h264"]
+
+        with yt_dlp.YoutubeDL(params=yt_dlp_params) as ydl:
             ydl.add_post_processor(GetFileNamePP())
             ydl.download([video_link(self.id)])
 
