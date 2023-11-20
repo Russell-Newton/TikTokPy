@@ -223,4 +223,9 @@ def video_link(video_id: int) -> str:
 def is_mobile_share_link(link: str) -> bool:
     import re
 
-    return re.match(r"https://vm\.tiktok\.com/[0-9A-Za-z]*", link) is not None
+    patterns = [
+        re.compile(r"https://vm\.tiktok\.com/[0-9A-Za-z]*"),
+        re.compile(r"https://www\.tiktok\.com/t/[0-9A-Za-z]*"),
+    ]
+
+    return any(re.match(pattern, link) is not None for pattern in patterns)
