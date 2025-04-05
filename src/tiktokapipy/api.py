@@ -274,17 +274,23 @@ if (navigator.webdriver === false) {
 
         return extracted
 
-    def _extract_and_dump_data(self, data: str, data_model: Type[_DataModelT]):
+    def _extract_and_dump_data(self, data: Union[str, dict], data_model: Type[_DataModelT]):
         if self.data_dump_file:
             with open(
                 f"{self.data_dump_file}.{data_model.__name__}.json",
                 "w+",
                 encoding="utf-8",
             ) as f:
-                j = json.loads(data)
+                if isinstance(data, str):
+                    j = json.loads(data)
+                else:
+                    j = data
                 json.dump(j, f, indent=2)
 
-        parsed = data_model.model_validate_json(data)
+        if isinstance(data, str):
+            parsed = data_model.model_validate_json(data)
+        else:
+            parsed = data_model.model_validate(data)
         return parsed
 
     def _extract_challenge_from_response(
@@ -306,13 +312,13 @@ if (navigator.webdriver === false) {
         self,
         response: UserResponse,
     ):
-        if response.user_page.status_code:
+        if response.status_code:
             raise TikTokAPIError(
-                f"Error in user extraction: status code {response.user_page.status_code} "
-                f"({ERROR_CODES[response.user_page.status_code]})"
+                f"Error in user extraction: status code {response.status_code} "
+                f"({ERROR_CODES[response.status_code]})"
             )
-        name, user = list(response.user_module.users.items())[0]
-        user.stats = response.user_module.stats[name]
+        user = response.user_info.user
+        user.stats = response.user_info.stats
         user._api = self
 
         return user
@@ -321,10 +327,10 @@ if (navigator.webdriver === false) {
         self,
         response: VideoPage,
     ):
-        if response.status_code:
+        if response.statusCode:
             raise TikTokAPIError(
-                f"Error in video extraction: status code {response.status_code} "
-                f"({ERROR_CODES[response.status_code]})"
+                f"Error in video extraction: status code {response.statusCode} "
+                f"({ERROR_CODES[response.statusCode]})"
             )
         video = response.item_info.video
         video._api = self

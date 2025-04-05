@@ -16,7 +16,7 @@ from tiktokapipy.models.video import LightVideo, Video
 class UserModule(CamelCaseModel):
     """:autodoc-skip:"""
 
-    users: Dict[str, User]
+    user: Dict[str, User]
     stats: Dict[str, UserStats]
 
 
@@ -30,7 +30,7 @@ class ChallengeInfo(CamelCaseModel):
 class StatusPage(CamelCaseModel):
     """:autodoc-skip:"""
 
-    status_code: int
+    statusCode: int
 
 
 class ChallengePage(StatusPage):
@@ -79,12 +79,25 @@ class ChallengeResponse(PrimaryResponseType):
 DesktopResponseT = TypeVar("DesktopResponseT")
 
 
+class UserInfo(CamelCaseModel):
+    """:autodoc-skip:"""
+    user: User
+    stats: UserStats
+
+
+class ShareMeta(CamelCaseModel):
+    """:autodoc-skip:"""
+    title: str
+    desc: str
+
+
 class UserResponse(PrimaryResponseType):
     """:autodoc-skip:"""
-
-    item_module: Optional[Dict[int, LightVideo]] = None
-    user_module: Optional[UserModule] = None
-    user_page: StatusPage
+    user_info: UserInfo = Field(alias="userInfo")
+    share_meta: ShareMeta = Field(alias="shareMeta")
+    status_code: int = Field(alias="statusCode")
+    status_msg: str = Field(alias="statusMsg")
+    need_fix: bool = Field(alias="needFix")
 
 
 class VideoResponse(PrimaryResponseType):

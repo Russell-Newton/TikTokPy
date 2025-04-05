@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import traceback
 import warnings
+import json
 from typing import Type, TypeVar, Union
 
 from playwright.async_api import Page, Route, TimeoutError, async_playwright
@@ -65,14 +66,14 @@ class AsyncTikTokAPI(TikTokAPI):
             page: Page = await self._context.new_page()
             await page.add_init_script(
                 """
-if (navigator.webdriver === false) {
-    // Post Chrome 89.0.4339.0 and already good
-} else if (navigator.webdriver === undefined) {
-    // Pre Chrome 89.0.4339.0 and already good
-} else {
-    // Pre Chrome 88.0.4291.0 and needs patching
-    delete Object.getPrototypeOf(navigator).webdriver
-}
+                if (navigator.webdriver === false) {
+                    // Post Chrome 89.0.4339.0 and already good
+                } else if (navigator.webdriver === undefined) {
+                    // Pre Chrome 89.0.4339.0 and already good
+                } else {
+                    // Pre Chrome 88.0.4291.0 and needs patching
+                    delete Object.getPrototypeOf(navigator).webdriver
+                }
             """
             )
 
@@ -84,12 +85,12 @@ if (navigator.webdriver === false) {
             await page.route("**/*", ignore_scripts)
             try:
                 await page.goto(link, wait_until=None)
-                await page.wait_for_selector("#SIGI_STATE", state="attached")
+                await page.wait_for_selector("#__UNIVERSAL_DATA_FOR_REHYDRATION__", state="attached")
                 content = await page.content()
-
                 data = content.split(
-                    '<script id="SIGI_STATE" type="application/json">'
+                    '<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">'
                 )[1].split("</script>")[0]
+                data = json.loads(data)['__DEFAULT_SCOPE__']['webapp.user-detail']
 
                 if "LoginContextModule" in data:
                     warnings.warn(
@@ -106,8 +107,12 @@ if (navigator.webdriver === false) {
                     data = content.split(
                         '<script id="SIGI_STATE" type="application/json">'
                     )[1].split("</script>")[0]
+                    data = json.loads(data)['__DEFAULT_SCOPE__']['webapp.user-detail']
 
                 await page.close()
+
+                if data.get('statusCode') == 10221:
+                    raise ValueError("Couldn't find this account")
 
                 extracted = self._extract_and_dump_data(data, data_model)
             except (ValidationError, IndexError) as e:
@@ -161,14 +166,14 @@ if (navigator.webdriver === false) {
                 page: Page = await self.context.new_page()
                 await page.add_init_script(
                     """
-    if (navigator.webdriver === false) {
-        // Post Chrome 89.0.4339.0 and already good
-    } else if (navigator.webdriver === undefined) {
-        // Pre Chrome 89.0.4339.0 and already good
-    } else {
-        // Pre Chrome 88.0.4291.0 and needs patching
-        delete Object.getPrototypeOf(navigator).webdriver
-    }
+                    if (navigator.webdriver === false) {
+                        // Post Chrome 89.0.4339.0 and already good
+                    } else if (navigator.webdriver === undefined) {
+                        // Pre Chrome 89.0.4339.0 and already good
+                    } else {
+                        // Pre Chrome 88.0.4291.0 and needs patching
+                        delete Object.getPrototypeOf(navigator).webdriver
+                    }
                 """
                 )
 
@@ -187,7 +192,6 @@ if (navigator.webdriver === false) {
             video_id = link_or_id.split("/")[-1].split("?")[0]
         else:
             video_id = link_or_id
-
         response = VideoPage.model_validate(
             await get_video_detail_async(video_id, self.context)
         )

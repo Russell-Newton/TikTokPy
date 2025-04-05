@@ -41,7 +41,7 @@ class SubtitleData(TitleCaseModel):
     url: str = Field(alias="Url")
     url_expire: int = Field(alias="UrlExpire")
     format: str = Field(alias="Format")
-    version: int = Field(alias="Version")
+    version: int | str = Field(alias="Version")
     source: str = Field(alias="Source")
     size: int = Field(alias="Size")
 
